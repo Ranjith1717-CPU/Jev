@@ -22,7 +22,7 @@ const SAMPLE_INBOX = JSON.parse(
 app.get('/data/inbox.json', (req, res) => res.json(SAMPLE_INBOX));
 
 // Extensionless aliases, e.g. /send instead of /send.html.
-['send', 'paste', 'flappy', 'mail'].forEach((page) => {
+['send', 'paste', 'flappy', 'mail', 'coach'].forEach((page) => {
   app.get(`/${page}`, (req, res) => res.sendFile(path.join(__dirname, 'public', `${page}.html`)));
 });
 
@@ -390,6 +390,123 @@ app.post('/api/mail/run', async (req, res) => {
     if (!aborted) {
       res.write(JSON.stringify({ finished: true, secs: (Date.now() - t0) / 1000 }) + '\n');
     }
+    res.end();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// /coach — Jev reads coaching-session write-ups and makes the calls a coach
+// needs: is value eroding, is the leader out of bandwidth, too many
+// commitments, is someone drifting, and what to do next. "sample" is a
+// fictional set shipped with the repo; "private" is an anonymised local
+// export built by scripts/build-coaching-data.js (git-ignored).
+// ---------------------------------------------------------------------------
+const COACH_SAMPLE = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'coaching-sample.json'), 'utf8'));
+const COACH_PRIVATE_PATH = path.join(__dirname, 'data', 'private', 'coaching-sessions.json');
+function coachSessions(source) {
+  if (source === 'private' && fs.existsSync(COACH_PRIVATE_PATH)) {
+    return JSON.parse(fs.readFileSync(COACH_PRIVATE_PATH, 'utf8'));
+  }
+  return COACH_SAMPLE;
+}
+
+const COACH_QUESTIONS = {
+  erosion: {
+    type: 'noul',
+    instructions:
+      // Wording chosen with scripts/tune-coach-question.js: 4x the catch rate of
+      // a plain "losing belief" phrasing on real sessions, same false-alarm rate.
+      "Is anyone's sense of value from the coaching, their chemistry with the coach, or the coaching's affordability going down (in the coach's notes or in what was said: questioning results, asking to cut sessions or cost, guarded or cooler with the coach, wanting to skip)?",
+  },
+  capacity: {
+    type: 'noul',
+    instructions:
+      'Is the decision-maker (CEO, founder or owner) out of bandwidth to act on what was agreed (covering open roles, approving everything personally, overloaded, agreed work repeatedly slipping)? Answer about the decision-maker only.',
+  },
+  overload: {
+    type: 'noul',
+    instructions: 'Did this session leave the client with more than three commitments to deliver before the next session?',
+  },
+  drift: {
+    type: 'noul',
+    instructions:
+      'Is any individual in the room drifting (showing doubt, disengagement, or wanting out), even if the session as a whole sounds positive?',
+  },
+  next: {
+    type: 'choice',
+    instructions: 'What should the coach do first after this session?',
+    criteria: {
+      value_conversation: 'Open a value conversation: show what the coaching has delivered, because belief in it is slipping',
+      reach_out: 'Reach out one-to-one to a specific person who is drifting or disengaged',
+      protect_capacity: "Free the leader's capacity: delegate, drop or defer work so they can act",
+      cut_commitments: 'Cut the commitment list to at most three, each with one owner and a date',
+      stay_course: 'Stay the course: the client is healthy and executing',
+    },
+  },
+};
+
+app.get('/api/coach/sources', (req, res) => {
+  const hasPrivate = fs.existsSync(COACH_PRIVATE_PATH);
+  res.json({ sample: COACH_SAMPLE.length, private: hasPrivate ? coachSessions('private').length : 0 });
+});
+app.get('/data/coaching.json', (req, res) => res.json(coachSessions(req.query.source)));
+
+app.post('/api/coach/run', async (req, res) => {
+  const all = coachSessions(req.body?.source);
+  const cap = isClaude(req) ? CLAUDE_MAX_EMAILS : all.length;
+  const n = Math.max(1, Math.min(cap, Number(req.body?.n) || all.length));
+  const concurrency = isClaude(req) ? CLAUDE_CONCURRENCY : MAX_CONCURRENCY;
+  const batch = all.slice(0, n);
+
+  res.set('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.set('Cache-Control', 'no-cache');
+  res.flushHeaders?.();
+
+  let aborted = false;
+  res.on('close', () => {
+    if (!res.writableEnded) aborted = true;
+  });
+
+  const t0 = Date.now();
+  let idx = 0;
+
+  async function worker() {
+    while (idx < batch.length && !aborted) {
+      const s = batch[idx++];
+      try {
+        const result = await askWith(req)({ state: s.text, questions: COACH_QUESTIONS });
+        if (aborted) return;
+        const a = result.raw.answers;
+        const flags = {
+          erosion: a.erosion.noul >= 0.5,
+          capacity: a.capacity.noul >= 0.5,
+          overload: a.overload.noul >= 0.5,
+          drift: a.drift.noul >= 0.5,
+        };
+        const lane = flags.erosion || flags.drift ? 'act' : flags.capacity ? 'watch' : 'ok';
+        const r = {
+          ...flags,
+          p: { erosion: a.erosion.noul, capacity: a.capacity.noul, overload: a.overload.noul, drift: a.drift.noul },
+          next: a.next.choice,
+          lane,
+          model: result.model,
+          ms: result.ms,
+          cost: result.cost,
+          tokens: result.tokens,
+          request: result.request,
+          raw: result.raw,
+        };
+        res.write(JSON.stringify({ id: s.id, r }) + '\n');
+      } catch (err) {
+        if (!aborted) res.write(JSON.stringify({ id: s.id, error: err.message }) + '\n');
+      }
+    }
+  }
+
+  try {
+    await Promise.all(Array.from({ length: Math.min(concurrency, batch.length) }, worker));
+  } finally {
+    if (!aborted) res.write(JSON.stringify({ finished: true, secs: (Date.now() - t0) / 1000 }) + '\n');
     res.end();
   }
 });

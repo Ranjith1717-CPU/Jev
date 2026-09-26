@@ -6,6 +6,7 @@ Four small apps showing what [TypeSafe's Jev](https://docs.typesafe.ai) (a "Syst
 - **`/paste`** — smart paste. Copy a whole résumé once, paste into any form field, Jev picks the exact snippet.
 - **`/flappy`** — Jev plays Flappy Bird. Every flap/wait is a live decision; the game describes itself as text.
 - **`/mail`** — Jev sorts an inbox live: 1,000 real emails randomly sampled from the [Enron email corpus](https://huggingface.co/datasets/LLM-PBE/enron-email) (category, priority, spam, reply-needed) — or your own Gmail (read-only, subject-lines-only).
+- **`/coach`**: Jev reads coaching-session write-ups and makes four calls (is anyone's sense of value eroding, is the leader out of bandwidth, too many commitments, is someone drifting) plus the coach's next move, then triages sessions into *Act now / Coach watch / On track*. Ships with 12 fictional sessions; can also run on your own BIG Intelligence export, locally (see below).
 
 **Compare with Claude (optional):** add `ANTHROPIC_API_KEY` to `.env` and `/mail`, `/send` and `/paste` get a "race against Claude Haiku 4.5" toggle. Claude answers the exact same typed questions (via structured outputs), side by side with Jev, and each page shows speed, cost and where the two disagree. Claude Haiku 4.5 costs $1 / $5 per million input / output tokens, roughly 25–30× Jev per email. The Claude lane on `/mail` runs at most 100 emails, 4 at a time. `/flappy` stays Jev-only, since it needs a decision every ~0.14 s.
 
@@ -69,6 +70,9 @@ lib/gmail.js         Gmail OAuth + metadata-only client
 lib/claude.js        Claude Haiku 4.5 client that answers Jev-style questions (comparison mode)
 data/enron-inbox.json    1,000 real Enron emails for /mail
 scripts/fetch-enron.js   Rebuilds data/enron-inbox.json from Hugging Face
+data/coaching-sample.json       12 fictional coaching sessions for /coach
+scripts/build-coaching-data.js  Anonymises a BIG Intelligence export into data/private/ (git-ignored)
+scripts/tune-coach-question.js  Compares wordings of a /coach question against your local data
 public/              The four demo pages + landing page
 ```
 
@@ -77,6 +81,23 @@ public/              The four demo pages + landing page
 `data/enron-inbox.json` is a random, lightly-cleaned sample of 1,000 emails from the public **Enron email corpus**, via the [`LLM-PBE/enron-email`](https://huggingface.co/datasets/LLM-PBE/enron-email) dataset on Hugging Face (~490k emails, raw text). Subjects and senders are parsed from the text where present; bodies are trimmed to 1,500 characters. The emails are unlabeled, so the demo shows what Jev decides rather than an accuracy score.
 
 To rebuild it (a different size or sample), run `node scripts/fetch-enron.js [count] [seed]` (defaults: 1000, 42). It pulls rows through the Hugging Face datasets-server API, so no Python or full download is needed.
+
+### Running /coach on your own coaching data
+
+```bash
+node scripts/build-coaching-data.js path/to/export.zip   # or an extracted folder
+```
+
+This reads every `*coach-dump.core.json` in the export (nested zips are fine) and writes `data/private/coaching-sessions.json`, which is **git-ignored and never committed**. Each session becomes the write-up Jev reads (summary, key issue, risks, commitments, and the coach's notes on people) with names replaced: people by role, the company by "the company", the coach by "the coach", plus common first names of outside contacts. Scores and health bands are kept out of the text and used only as the answer key, from BIG Intelligence's per-person scorecards:
+
+| Call | Checked against |
+|---|---|
+| Value eroding | someone's ROI perception or chemistry fell by 1+ point since their last read |
+| Leader out of bandwidth | a decision-maker's implementation capacity is below 6 |
+| Too many commitments | more than 3 actions set in the session |
+| Someone drifting | anyone in the room below the Healthy band |
+
+Restart the server and `/coach` shows a **Your engagements (local only)** option. Note that the anonymised text is sent to the Jev API (and to Claude if the comparison is on) for classification. Anonymisation is name-based, so places and vendor names remain.
 
 ## Deploying
 

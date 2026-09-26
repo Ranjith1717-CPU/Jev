@@ -3,3 +3,4 @@ node_modules/
 .gmail-token.json
 *.log
 .DS_Store
+data/private/
