@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const { askJev, JevError } = require('./lib/jev');
+const { askClaude, CLAUDE_MODEL } = require('./lib/claude');
 const gmail = require('./lib/gmail');
 
 const app = express();
@@ -28,8 +29,18 @@ app.get('/data/inbox.json', (req, res) => res.json(SAMPLE_INBOX));
 // Tell the client whether the server has a key configured, without ever
 // exposing the key itself. Pages use this to show a friendly setup banner.
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, jevConfigured: Boolean(process.env.TYPESAFE_API_KEY) });
+  res.json({
+    ok: true,
+    jevConfigured: Boolean(process.env.TYPESAFE_API_KEY),
+    claudeConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
+    claudeModel: CLAUDE_MODEL,
+  });
 });
+
+// Every /api route takes an optional { engine: 'claude' } to answer the same
+// questions with Claude Haiku instead of Jev, for side-by-side comparison.
+const isClaude = (req) => req.body?.engine === 'claude';
+const askWith = (req) => (isClaude(req) ? askClaude : askJev);
 
 function sendJevError(res, err) {
   console.error('[jev]', err.message);
@@ -100,7 +111,7 @@ app.post('/api/submit', async (req, res) => {
   };
 
   try {
-    const result = await askJev({ state: text, questions });
+    const result = await askWith(req)({ state: text, questions });
 
     const a = result.raw.answers;
     let lane = 'auto';
@@ -146,11 +157,11 @@ app.post('/api/paste', async (req, res) => {
   };
 
   try {
-    const result = await askJev({ state: `Field to fill: ${field}`, questions });
+    const result = await askWith(req)({ state: `Field to fill: ${field}`, questions });
     const a = result.raw.answers.pick;
     const idx = a.choice === 'none' ? -1 : Number(a.choice.slice(1));
     const text = idx >= 0 ? snippets[idx] : '';
-    res.json({ ...result, text, p: a.probabilities[a.choice] });
+    res.json({ ...result, text, p: a.probabilities ? a.probabilities[a.choice] : null });
   } catch (err) {
     sendJevError(res, err);
   }
@@ -175,7 +186,7 @@ app.post('/api/flappy', async (req, res) => {
   };
 
   try {
-    const result = await askJev({ state, questions });
+    const result = await askWith(req)({ state, questions });
     const move = result.raw.answers.move.choice;
     res.json({ ...result, move });
   } catch (err) {
@@ -213,6 +224,10 @@ const MAIL_QUESTIONS = {
 };
 
 const MAX_CONCURRENCY = 8;
+// Claude runs fewer requests at once and at most 100 emails per run, to stay
+// inside new-account rate limits (and because each call costs ~25x more).
+const CLAUDE_CONCURRENCY = 4;
+const CLAUDE_MAX_EMAILS = 100;
 
 // ---------------------------------------------------------------------------
 // Gmail OAuth (read-only, headers-only via the gmail.metadata scope) + the
@@ -258,6 +273,7 @@ app.post('/api/gmail/disconnect', (req, res) => {
 
 app.post('/api/mail/gmail/run', async (req, res) => {
   const n = Math.max(1, Math.min(50, Number(req.body?.n) || 25));
+  const concurrency = isClaude(req) ? CLAUDE_CONCURRENCY : MAX_CONCURRENCY;
 
   res.set('Content-Type', 'application/x-ndjson; charset=utf-8');
   res.set('Cache-Control', 'no-cache');
@@ -289,7 +305,7 @@ app.post('/api/mail/gmail/run', async (req, res) => {
       // Subject + sender only — never a body. Matches the gmail.metadata scope.
       const state = `From: ${m.from}\nSubject: ${m.subject}`;
       try {
-        const result = await askJev({ state, questions: MAIL_QUESTIONS });
+        const result = await askWith(req)({ state, questions: MAIL_QUESTIONS });
         if (aborted) return;
         const a = result.raw.answers;
         const r = {
@@ -312,7 +328,7 @@ app.post('/api/mail/gmail/run', async (req, res) => {
   }
 
   try {
-    await Promise.all(Array.from({ length: Math.min(MAX_CONCURRENCY, messages.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(concurrency, messages.length) }, worker));
   } finally {
     if (!aborted) {
       res.write(JSON.stringify({ finished: true, secs: (Date.now() - t0) / 1000 }) + '\n');
@@ -322,7 +338,9 @@ app.post('/api/mail/gmail/run', async (req, res) => {
 });
 
 app.post('/api/mail/run', async (req, res) => {
-  const n = Math.max(1, Math.min(SAMPLE_INBOX.length, Number(req.body?.n) || SAMPLE_INBOX.length));
+  const cap = isClaude(req) ? CLAUDE_MAX_EMAILS : SAMPLE_INBOX.length;
+  const n = Math.max(1, Math.min(cap, Number(req.body?.n) || SAMPLE_INBOX.length));
+  const concurrency = isClaude(req) ? CLAUDE_CONCURRENCY : MAX_CONCURRENCY;
   const batch = SAMPLE_INBOX.slice(0, n);
 
   res.set('Content-Type', 'application/x-ndjson; charset=utf-8');
@@ -344,7 +362,7 @@ app.post('/api/mail/run', async (req, res) => {
         ? `From: ${email.from}\nSubject: ${email.subject}\n\n${email.body}`
         : `Subject: ${email.subject}\n\n${email.body}`;
       try {
-        const result = await askJev({ state, questions: MAIL_QUESTIONS });
+        const result = await askWith(req)({ state, questions: MAIL_QUESTIONS });
         if (aborted) return;
         const a = result.raw.answers;
         const r = {
@@ -367,7 +385,7 @@ app.post('/api/mail/run', async (req, res) => {
   }
 
   try {
-    await Promise.all(Array.from({ length: Math.min(MAX_CONCURRENCY, batch.length) }, worker));
+    await Promise.all(Array.from({ length: Math.min(concurrency, batch.length) }, worker));
   } finally {
     if (!aborted) {
       res.write(JSON.stringify({ finished: true, secs: (Date.now() - t0) / 1000 }) + '\n');

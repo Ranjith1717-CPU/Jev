@@ -7,7 +7,7 @@ Four small apps showing what [TypeSafe's Jev](https://docs.typesafe.ai) (a "Syst
 - **`/flappy`** — Jev plays Flappy Bird. Every flap/wait is a live decision; the game describes itself as text.
 - **`/mail`** — Jev sorts an inbox live: 1,000 real emails randomly sampled from the [Enron email corpus](https://huggingface.co/datasets/LLM-PBE/enron-email) (category, priority, spam, reply-needed) — or your own Gmail (read-only, subject-lines-only).
 
-No page compares Jev against another model — this is purely a Jev showcase.
+**Compare with Claude (optional):** add `ANTHROPIC_API_KEY` to `.env` and `/mail`, `/send` and `/paste` get a "race against Claude Haiku 4.5" toggle. Claude answers the exact same typed questions (via structured outputs), side by side with Jev, and each page shows speed, cost and where the two disagree. Claude Haiku 4.5 costs $1 / $5 per million input / output tokens, roughly 25–30× Jev per email. The Claude lane on `/mail` runs at most 100 emails, 4 at a time. `/flappy` stays Jev-only, since it needs a decision every ~0.14 s.
 
 ## Setup
 
@@ -66,6 +66,7 @@ The OAuth token is stored locally in `.gmail-token.json` (gitignored, single-use
 server.js          Express app: static pages + /api/* routes
 lib/jev.js          Jev API client (fetch wrapper, cost calc)
 lib/gmail.js         Gmail OAuth + metadata-only client
+lib/claude.js        Claude Haiku 4.5 client that answers Jev-style questions (comparison mode)
 data/enron-inbox.json    1,000 real Enron emails for /mail
 scripts/fetch-enron.js   Rebuilds data/enron-inbox.json from Hugging Face
 public/              The four demo pages + landing page

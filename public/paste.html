@@ -7,7 +7,7 @@
 <style>
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400&display=swap");
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--ink:#1C2322;--muted:#8A9391;--line:#E4E9E8;--accent:#149A8E}
+:root{--ink:#1C2322;--muted:#8A9391;--line:#E4E9E8;--accent:#149A8E;--c:#C15F3C}
 body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif}
 header{padding:26px 40px 0}
 .back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:10px}
@@ -40,6 +40,11 @@ h1 span{color:var(--accent)}
 .side pre{font-family:"Space Mono",monospace;font-size:11px;line-height:1.45;background:#F4F6F5;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;color:#4F5A58;max-height:260px;overflow:auto}
 .side .empty{color:var(--muted);font-size:14px;padding:30px 4px;text-align:center}
 .f.sel input,.f.sel textarea{border-color:var(--accent)}
+.f .ctag{min-height:0;font-family:"Space Mono",monospace;font-size:11.5px;color:var(--c)}
+.stats .c b{color:var(--c)}
+.cmp{display:flex;align-items:center;gap:8px;font-size:13.5px;cursor:pointer;color:var(--muted);margin-bottom:12px}
+.cmp input{width:16px;height:16px;accent-color:var(--c)}
+@media (max-width:900px){.wrap{grid-template-columns:1fr!important;padding:16px}header{padding:22px 16px 0}}
 </style>
 </head>
 <body>
@@ -73,23 +78,29 @@ IIT Bombay, B.Tech in Computer Science, 2017</div>
   <div class="card">
     <div class="lbl">Job application</div>
     <form id="form" autocomplete="off">
-      <div class="f"><label>Full name</label><input data-field="Full name"><div class="tag"></div></div>
-      <div class="f"><label>Email address</label><input data-field="Email address"><div class="tag"></div></div>
-      <div class="f"><label>Phone number</label><input data-field="Phone number"><div class="tag"></div></div>
-      <div class="f"><label>Current city</label><input data-field="Current city"><div class="tag"></div></div>
-      <div class="f"><label>LinkedIn profile</label><input data-field="LinkedIn profile URL"><div class="tag"></div></div>
-      <div class="f"><label>Current company</label><input data-field="Current company and role"><div class="tag"></div></div>
-      <div class="f"><label>University</label><input data-field="University and degree"><div class="tag"></div></div>
-      <div class="f"><label>Short summary</label><textarea data-field="Short professional summary"></textarea><div class="tag"></div></div>
+      <div class="f"><label>Full name</label><input data-field="Full name"><div class="tag"></div><div class="ctag"></div></div>
+      <div class="f"><label>Email address</label><input data-field="Email address"><div class="tag"></div><div class="ctag"></div></div>
+      <div class="f"><label>Phone number</label><input data-field="Phone number"><div class="tag"></div><div class="ctag"></div></div>
+      <div class="f"><label>Current city</label><input data-field="Current city"><div class="tag"></div><div class="ctag"></div></div>
+      <div class="f"><label>LinkedIn profile</label><input data-field="LinkedIn profile URL"><div class="tag"></div><div class="ctag"></div></div>
+      <div class="f"><label>Current company</label><input data-field="Current company and role"><div class="tag"></div><div class="ctag"></div></div>
+      <div class="f"><label>University</label><input data-field="University and degree"><div class="tag"></div><div class="ctag"></div></div>
+      <div class="f"><label>Short summary</label><textarea data-field="Short professional summary"></textarea><div class="tag"></div><div class="ctag"></div></div>
     </form>
     <p class="hint">Click a field and press <span class="key">⌘V</span></p>
   </div>
   <div class="card side">
+    <label class="cmp"><input type="checkbox" id="cmp" checked> Also ask Claude Haiku 4.5 <small id="cmpNote"></small></label>
     <div class="stats">
       <div><b id="st-model">–</b>model</div>
       <div class="a"><b id="st-last">–</b>last pick</div>
       <div><b id="st-n">0</b>pastes</div>
       <div class="a"><b id="st-cost">$0</b>total cost</div>
+    </div>
+    <div class="stats" id="cstats" style="display:none">
+      <div class="c"><b id="cst-last">–</b>Claude last pick</div>
+      <div class="c"><b id="cst-cost">$0</b>Claude total cost</div>
+      <div><b id="cst-agree">–</b>same pick as Jev</div>
     </div>
     <div id="detail"><div class="empty">Paste into any field to see the exact request sent to Jev and its raw response.</div></div>
   </div>
@@ -109,16 +120,25 @@ function snippets(text) {
   });
   return [...new Set(out)];
 }
+let claudeReady = false, cN = 0, cAgree = 0, cCost = 0;
+fetch('/api/health').then(r => r.json()).then(h => {
+  claudeReady = !!h.claudeConfigured; document.getElementById('cmp').disabled = !claudeReady;
+  if (!claudeReady) { document.getElementById('cmp').checked = false; document.getElementById('cmpNote').textContent = '(needs ANTHROPIC_API_KEY)'; }
+}).catch(() => {});
+const pick = (field, list, engine) => fetch('/api/paste', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, snippets: list, engine }) })
+  .then(r => r.json()).then(r => { if (r.error) throw new Error(r.error); return r; });
 document.querySelectorAll('[data-field]').forEach(el => {
   el.addEventListener('paste', async ev => {
     const text = (ev.clipboardData || window.clipboardData).getData('text');
     if (!text || !text.includes('\n')) return; // single values paste normally
     ev.preventDefault();
-    const box = el.parentElement, tag = box.querySelector('.tag');
-    tag.textContent = 'Jev is picking…';
+    const box = el.parentElement, tag = box.querySelector('.tag'), ctag = box.querySelector('.ctag');
+    tag.textContent = 'Jev is picking…'; ctag.textContent = '';
+    const list = snippets(text), two = claudeReady && document.getElementById('cmp').checked;
+    const cp = two ? pick(el.dataset.field, list, 'claude').catch(e => ({ error: e.message })) : null;
+    if (cp) ctag.textContent = 'Claude Haiku is picking…';
     try {
-      const r = await fetch('/api/paste', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field: el.dataset.field, snippets: snippets(text) }) }).then(r => r.json());
-      if (r.error) throw new Error(r.error);
+      const r = await pick(el.dataset.field, list, 'jev');
       el.value = r.text;
       window.__n = (window.__n || 0) + 1; window.__cost = (window.__cost || 0) + (r.cost || 0);
       document.getElementById('st-model').textContent = r.model;
@@ -130,8 +150,22 @@ document.querySelectorAll('[data-field]').forEach(el => {
       document.getElementById('detail').innerHTML = `<h4>Field: ${esc(el.dataset.field)}</h4>
         <h4>Request sent <span>POST api.typesafe.ai/v1/systemone</span></h4><pre>${esc(JSON.stringify(r.request, null, 2))}</pre>
         <h4>Raw response <span>${esc(r.model)} · ${(r.ms / 1000).toFixed(2)} s · ${r.tokens} tokens · $${r.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify(r.raw, null, 2))}</pre>`;
-      tag.textContent = r.text ? `Jev picked this in ${(r.ms / 1000).toFixed(2)} s · ${Math.round(r.p * 100)}% sure` : 'Nothing in the copied text fits this field';
+      tag.textContent = r.text ? `Jev picked this in ${(r.ms / 1000).toFixed(2)} s${r.p != null ? ' · ' + Math.round(r.p * 100) + '% sure' : ''}` : 'Nothing in the copied text fits this field';
       box.classList.add('flash'); setTimeout(() => box.classList.remove('flash'), 700);
+      if (cp) {
+        const c = await cp;
+        if (c.error) { ctag.textContent = 'Claude: ' + c.error; return; }
+        const same = c.text === r.text;
+        cN++; if (same) cAgree++; cCost += c.cost || 0;
+        ctag.textContent = `Claude Haiku took ${(c.ms / 1000).toFixed(2)} s: ${same ? 'same pick' : 'picked "' + (c.text || 'nothing') + '"'}`;
+        document.getElementById('cstats').style.display = '';
+        document.getElementById('cst-last').textContent = (c.ms / 1000).toFixed(2) + ' s';
+        document.getElementById('cst-cost').textContent = '$' + cCost.toFixed(5);
+        document.getElementById('cst-agree').textContent = `${cAgree} / ${cN}`;
+        document.getElementById('detail').insertAdjacentHTML('beforeend', `
+          <h4 style="color:var(--c)">Claude Haiku 4.5 <span>POST api.anthropic.com/v1/messages</span></h4><pre>${esc(JSON.stringify(c.request, null, 2))}</pre>
+          <h4>Claude raw response <span>${esc(c.model)} · ${(c.ms / 1000).toFixed(2)} s · ${c.tokens} tokens · $${c.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify(c.raw, null, 2))}</pre>`);
+      }
     } catch (e) { tag.textContent = e.message; }
   });
 });

@@ -7,7 +7,7 @@
 <style>
 @import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--ink:#1C2322;--muted:#7F8886;--line:#E6EAE9;--j:#149A8E;--warn:#D9535A;--amber:#C98A12}
+:root{--ink:#1C2322;--muted:#7F8886;--line:#E6EAE9;--j:#149A8E;--warn:#D9535A;--amber:#C98A12;--c:#C15F3C}
 body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif;padding:32px 48px 48px;max-width:1200px;margin:0 auto}
 .back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:10px}
 .back:hover{color:var(--j)}
@@ -37,7 +37,13 @@ h1 span{color:var(--j)}
 button.go{font:inherit;font-size:16px;font-weight:600;border:0;background:var(--ink);color:#fff;padding:12px 28px;border-radius:12px;cursor:pointer}
 button.go:disabled{opacity:.35}
 button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--muted);padding:10px;cursor:pointer;text-decoration:underline}
-.lane{margin-top:24px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 26px;max-width:420px}
+.lanes{margin-top:24px;display:flex;gap:16px;flex-wrap:wrap}
+.lane{flex:1 1 320px;max-width:440px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 26px}
+.lane.claude .name{color:var(--c)}.lane.claude .prog i{background:var(--c)}
+.cmp{display:flex;align-items:center;gap:8px;font-size:14.5px;cursor:pointer}
+.cmp input{width:17px;height:17px;accent-color:var(--c)}
+.cmp small{color:var(--muted);font-size:13px}
+.cap{margin-top:6px;font-size:12.5px;color:var(--muted);min-height:1em}
 .top{display:flex;justify-content:space-between;align-items:baseline}
 .name{font-family:"Space Grotesk",sans-serif;font-size:22px;font-weight:700;color:var(--j)}
 .model{font-family:"Space Mono",monospace;font-size:12px;color:var(--muted)}
@@ -59,6 +65,9 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
 .filter button{font:inherit;font-size:13px;border:0;background:none;padding:7px 12px;cursor:pointer;color:var(--muted)}
 .filter button.on{background:#F0F3F2;color:var(--ink);font-weight:600}
 .fh,.fr{display:grid;grid-template-columns:1fr 150px 190px;gap:12px;align-items:center;padding:10px 20px}
+.feed.two .fh,.feed.two .fr{grid-template-columns:1fr 130px 150px 150px}
+.fr.diff{background:#FFF9EC}
+@media (max-width:700px){body{padding:24px 16px 40px}.fh,.fr,.feed.two .fh,.feed.two .fr{grid-template-columns:1fr 110px}.fh span:nth-child(2),.fr>span:nth-child(2){display:none}}
 .fh{font-size:12px;font-weight:600;color:var(--muted);background:#FAFBFB;border-bottom:1px solid var(--line)}
 #feed{max-height:440px;overflow-y:auto}
 .fr{border-bottom:1px solid #F1F3F2;font-size:14.5px;cursor:pointer;animation:pop .3s ease}
@@ -68,7 +77,8 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
 .chip.spam{background:#FBEBEC;color:var(--warn)}
 .ok{color:var(--j);font-weight:700;margin-left:4px}.bad{color:var(--warn);font-weight:700;margin-left:4px}
 .empty{padding:28px 20px;text-align:center;color:var(--muted);font-size:14px}
-.result{margin-top:20px;border-radius:18px;padding:22px 26px;background:#EEF7F5;border:1px solid #CFE7E3;display:none;max-width:600px}
+.result{margin-top:20px;border-radius:18px;padding:22px 26px;background:#EEF7F5;border:1px solid #CFE7E3;display:none;max-width:900px}
+.result .vs{margin-top:10px;font-size:15px;line-height:1.7}.result .vs b{color:var(--ink)}
 .result .big{font-family:"Space Grotesk",sans-serif;font-size:30px;font-weight:700;color:var(--j)}
 .result p{margin-top:6px;font-size:15px;color:var(--muted)}
 @keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
@@ -111,24 +121,39 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
 
 <div class="bar">
   <button class="go" id="go">Start</button><button class="ghost" id="stop">Stop</button>
+  <label class="cmp"><input type="checkbox" id="cmp" checked> Race against Claude Haiku 4.5 <small id="cmpNote"></small></label>
 </div>
 
-<div class="lane">
-  <div class="top"><span class="name" id="laneName">Jev</span><span class="model" id="jm">jev-1.13.0</span></div>
-  <div class="clock" id="jt">0.0<small>s</small></div>
-  <div class="prog"><i id="jp"></i></div>
-  <div class="count" id="jn"><b>0</b> / 25 emails</div>
-  <div class="nums two" id="nums">
-    <div><b id="jc">$0</b><span>cost</span></div>
-    <div><b id="jl">–</b><span>per email</span></div>
+<div class="lanes">
+  <div class="lane">
+    <div class="top"><span class="name">Jev</span><span class="model" id="jm">jev-latest</span></div>
+    <div class="clock" id="jt">0.0<small>s</small></div>
+    <div class="prog"><i id="jp"></i></div>
+    <div class="count" id="jn"><b>0</b> / 25 emails</div>
+    <div class="cap"></div>
+    <div class="nums two">
+      <div><b id="jc">$0</b><span>cost</span></div>
+      <div><b id="jl">–</b><span>per email</span></div>
+    </div>
+  </div>
+  <div class="lane claude" id="claneBox">
+    <div class="top"><span class="name">Claude Haiku 4.5</span><span class="model" id="cm">claude-haiku-4-5</span></div>
+    <div class="clock" id="ct">0.0<small>s</small></div>
+    <div class="prog"><i id="cp"></i></div>
+    <div class="count" id="cn"><b>0</b> / 25 emails</div>
+    <div class="cap" id="ccap"></div>
+    <div class="nums two">
+      <div><b id="cc">$0</b><span>cost</span></div>
+      <div><b id="cl">–</b><span>per email</span></div>
+    </div>
   </div>
 </div>
 
 <div class="result" id="result"></div>
 
-<div class="feed">
+<div class="feed" id="feedBox">
   <div class="feedtop"><h3 id="feedTitle">Every email<span>newest first · click one to see the full request/response</span></h3>
-    <div class="filter" id="filter"><button data-f="all" class="on">All</button><button data-f="spam">Only flagged spam</button></div></div>
+    <div class="filter" id="filter"><button data-f="all" class="on">All</button><button data-f="spam">Only flagged spam</button><button data-f="diff" id="fdiff">Only disagreements</button></div></div>
   <div class="fh" id="fh"><span>Email subject</span><span>From</span><span>Jev says</span></div>
   <div id="feed"><div class="empty">Press Start to see each email land here.</div></div>
 </div>
@@ -139,7 +164,9 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const fmt = s => s < 60 ? s.toFixed(1) + '<small>s</small>' : Math.floor(s / 60) + '<small>m</small> ' + String(Math.floor(s % 60)).padStart(2, '0') + '<small>s</small>';
 const label = x => x ? (x.spam ? 'Spam' : 'Not spam') : '…';
 
-let source = 'sample', N = 25, runId = 0, res = {}, ctrl = null, tick = null, filt = 'all';
+const CLAUDE_MAX = 100; // server caps Claude runs at 100 emails (rate limits + cost)
+let source = 'sample', N = 25, runId = 0, res = { jev: {}, claude: {} }, ctrls = [], tick = null, filt = 'all';
+let claudeReady = false;
 let SAMPLE = [], gmailItems = [], gmailConnected = false, gmailConfigured = false;
 
 fetch('/data/inbox.json').then(r => r.json()).then(d => { SAMPLE = d; });
@@ -188,7 +215,7 @@ function applySource() {
 function wireFilter() {
   document.querySelectorAll('#filter button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#filter button').forEach(x => x.classList.toggle('on', x === b)); filt = b.dataset.f;
-    document.querySelectorAll('.fr').forEach(r => r.style.display = (filt !== 'all' && !r.classList.contains('isspam')) ? 'none' : '');
+    applyFilter();
   });
 }
 document.querySelectorAll('#source button').forEach(b => b.onclick = () => {
@@ -196,91 +223,161 @@ document.querySelectorAll('#source button').forEach(b => b.onclick = () => {
 });
 document.querySelectorAll('#size button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#size button').forEach(x => x.classList.toggle('on', x === b)); N = +b.dataset.n;
-  $('jn').innerHTML = `<b>0</b> / ${N.toLocaleString()} emails`;
+  resetLanes();
 });
 wireFilter();
 applySource();
 
+const compareOn = () => claudeReady && $('cmp').checked;
+const verdict = r => r ? (r.spam ? 'Flagged spam' : r.category) : null;
+const chip = r => r ? `<span class="chip ${r.spam ? 'spam' : ''}">${esc(verdict(r))}</span>` : '<span class="chip" style="opacity:.4">…</span>';
+
+function applyFilter() {
+  const cls = { spam: 'isspam', diff: 'diff' }[filt];
+  document.querySelectorAll('.fr').forEach(r => r.style.display = cls && !r.classList.contains(cls) ? 'none' : '');
+}
+
+function setCompareUi() {
+  const on = compareOn();
+  $('claneBox').style.display = on ? '' : 'none';
+  $('fdiff').style.display = on ? '' : 'none';
+  $('feedBox').classList.toggle('two', on);
+  $('fh').innerHTML = '<span>Email subject</span><span>From</span><span>Jev says</span>' + (on ? '<span>Claude says</span>' : '');
+}
+$('cmp').onchange = () => { setCompareUi(); resetLanes(); };
+
+fetch('/api/health').then(r => r.json()).then(h => {
+  claudeReady = !!h.claudeConfigured;
+  $('cmp').disabled = !claudeReady;
+  $('cmpNote').textContent = claudeReady ? '' : '(add ANTHROPIC_API_KEY to .env and restart to enable)';
+  setCompareUi(); resetLanes();
+}).catch(() => {});
+
+// Which email ids the Claude lane will cover this run (it may run fewer).
+let claudeIds = new Set(), claudeAll = false;
 function feedRow(e) {
-  const r = res[e.id];
-  const isspam = r && r.spam;
-  const c = r ? `<span class="chip ${r.spam ? 'spam' : ''}">${r.spam ? 'Flagged spam' : r.category}</span>` : '<span class="chip" style="opacity:.4">…</span>';
-  return `<div class="fr ${isspam ? 'isspam' : ''}" data-id="${e.id}"><span class="s">${esc(e.subject)}</span><span class="s">${esc(e.from || '—')}</span><span>${c}</span></div>`;
+  const j = res.jev[e.id], c = res.claude[e.id], two = compareOn();
+  const diff = two && j && c && verdict(j) !== verdict(c);
+  const cls = [(j && j.spam) || (c && c.spam) ? 'isspam' : '', diff ? 'diff' : ''].join(' ');
+  const covered = claudeAll || claudeIds.has(e.id);
+  const claudeCell = two ? `<span>${covered ? chip(c) : '<span class="chip" style="opacity:.4">not run</span>'}</span>` : '';
+  return `<div class="fr ${cls}" data-id="${e.id}"><span class="s">${esc(e.subject)}</span><span class="s">${esc(e.from || '—')}</span><span>${chip(j)}</span>${claudeCell}</div>`;
 }
 function upsert(e) {
   const f = $('feed'); const em = f.querySelector('.empty'); if (em) em.remove();
   const row = feedRow(e);
   const old = f.querySelector(`.fr[data-id="${e.id}"]`);
   if (old) old.outerHTML = row; else f.insertAdjacentHTML('afterbegin', row);
+  applyFilter();
 }
 
-function paint(done, n, cost) {
-  $('jp').style.width = (100 * done / n) + '%';
-  $('jn').innerHTML = `<b>${done.toLocaleString()}</b> / ${n.toLocaleString()} emails`;
-  $('jc').textContent = '$' + cost.toFixed(4);
-  $('jl').textContent = done ? (cost / done).toFixed(6) : '–';
+function laneN(p) { return p === 'c' ? Math.min(N, CLAUDE_MAX) : N; }
+function paint(p, done, n, cost) {
+  $(p + 'p').style.width = (100 * done / n) + '%';
+  $(p + 'n').innerHTML = `<b>${done.toLocaleString()}</b> / ${n.toLocaleString()} emails`;
+  $(p + 'c').textContent = '$' + cost.toFixed(4);
+  $(p + 'l').textContent = done ? '$' + (cost / done).toFixed(6) : '–';
+}
+function resetLanes() {
+  for (const p of ['j', 'c']) { paint(p, 0, laneN(p), 0); $(p + 't').innerHTML = fmt(0); }
+  $('ccap').textContent = N > CLAUDE_MAX ? `Claude runs the first ${CLAUDE_MAX} only (rate limits + cost)` : '';
 }
 
-$('go').onclick = async () => {
-  const my = ++runId;
-  hideBanner();
-  res = {}; $('feed').innerHTML = '<div class="empty">Waiting for the first answers…</div>'; $('result').style.display = 'none'; $('go').disabled = true;
-  let done = 0, cost = 0, msSum = 0;
-  const t0 = performance.now();
-  let byId = {};
-  const n = N;
-
-  if (source === 'sample') {
-    if (!SAMPLE.length) { $('go').disabled = false; return; }
-    byId = Object.fromEntries(SAMPLE.slice(0, n).map(e => [e.id, e]));
-  }
-
-  paint(0, n, 0);
-  clearInterval(tick); tick = setInterval(() => { const s = (performance.now() - t0) / 1000; $('jt').innerHTML = fmt(s); }, 100);
-  ctrl = new AbortController();
-
+// Streams one engine's results into its lane. Resolves with that lane's stats.
+async function runLane(engine, n, byId, lane, my) {
+  const p = engine === 'claude' ? 'c' : 'j';
+  const who = engine === 'claude' ? 'Claude: ' : 'Jev: ';
+  const st = { done: 0, cost: 0, msSum: 0, secs: 0, errors: 0 };
+  const ctrl = new AbortController(); ctrls.push(ctrl);
   const url = source === 'gmail' ? '/api/mail/gmail/run' : '/api/mail/run';
+  paint(p, 0, n, 0);
   try {
-    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n }), signal: ctrl.signal });
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n, engine }), signal: ctrl.signal });
     const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
     while (true) {
       const { value, done: streamDone } = await reader.read(); if (streamDone) break;
       buf += dec.decode(value, { stream: true }); let nl;
       while ((nl = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, nl); buf = buf.slice(nl + 1); if (!line) continue;
+        const line = buf.slice(0, nl); buf = buf.slice(nl + 1); if (!line || my !== runId) continue;
         const m = JSON.parse(line);
-        if (m.finished) { $('jt').innerHTML = fmt(m.secs); continue; }
-        if (m.error && !m.id) { showBanner('err', m.error); continue; }
-        if (m.error) continue;
-        if (source === 'gmail') { byId[m.id] = { id: m.id, subject: m.subject, from: m.from }; }
-        const e = byId[m.id], r = m.r; res[e.id] = r;
-        done++; cost += r.cost; msSum += r.ms;
-        $('jm').textContent = r.model; paint(done, n, cost); upsert(e);
+        if (m.finished) { st.secs = m.secs; continue; }
+        if (m.error && !m.id) { showBanner('err', who + m.error); continue; }
+        if (m.error) { if (++st.errors === 1) showBanner('err', who + m.error); continue; }
+        if (source === 'gmail' && !byId[m.id]) byId[m.id] = { id: m.id, subject: m.subject, from: m.from };
+        const e = byId[m.id], r = m.r; res[engine][e.id] = r;
+        st.done++; st.cost += r.cost; st.msSum += r.ms;
+        $(p + 'm').textContent = r.model; paint(p, st.done, n, st.cost); upsert(e);
       }
     }
   } catch (err) { /* stopped */ }
-  clearInterval(tick); $('go').disabled = false;
-  if (my !== runId) return;
+  lane.doneAt = performance.now();
+  if (st.secs) $(p + 't').innerHTML = fmt(st.secs);
+  return st;
+}
 
-  if (done >= n && done > 0) {
-    const spamCount = Object.values(res).filter(r => r.spam).length;
-    $('result').innerHTML = `<div class="big">${done.toLocaleString()} emails sorted</div><p>${(done * 4).toLocaleString()} decisions · ${spamCount.toLocaleString()} flagged spam · ${cost.toFixed(4)} total · ${(msSum / done / 1000).toFixed(2)} s per email average.${source === 'gmail' ? ' Jev only ever saw the sender and subject line.' : ''}</p>`;
-    $('result').style.display = 'block';
+$('go').onclick = async () => {
+  const my = ++runId;
+  hideBanner();
+  res = { jev: {}, claude: {} };
+  $('feed').innerHTML = '<div class="empty">Waiting for the first answers…</div>'; $('result').style.display = 'none'; $('go').disabled = true;
+  const two = compareOn(), n = N, cn = Math.min(n, CLAUDE_MAX);
+  let byId = {};
+  claudeIds = new Set(); claudeAll = two && source === 'gmail'; // Gmail ids only arrive on the stream
+  if (source === 'sample') {
+    if (!SAMPLE.length) { $('go').disabled = false; return; }
+    byId = Object.fromEntries(SAMPLE.slice(0, n).map(e => [e.id, e]));
+    if (two) SAMPLE.slice(0, cn).forEach(e => claudeIds.add(e.id));
   }
+  resetLanes();
+  const t0 = performance.now(), J = { doneAt: 0 }, C = { doneAt: two ? 0 : t0 };
+  clearInterval(tick); tick = setInterval(() => {
+    const secs = (performance.now() - t0) / 1000;
+    if (!J.doneAt) $('jt').innerHTML = fmt(secs);
+    if (!C.doneAt) $('ct').innerHTML = fmt(secs);
+  }, 100);
+  ctrls = [];
+
+  const [js, cs] = await Promise.all([
+    runLane('jev', n, byId, J, my),
+    two ? runLane('claude', cn, byId, C, my) : Promise.resolve(null),
+  ]);
+  clearInterval(tick); $('go').disabled = false;
+  if (my !== runId || !js.done) return;
+
+  const avg = st => st.msSum / st.done / 1000;
+  const per = st => st.cost / st.done;
+  const x = (a, b) => (a / b >= 10 ? Math.round(a / b) : (a / b).toFixed(1)) + '×';
+  const spamCount = Object.values(res.jev).filter(r => r.spam).length;
+  let html = `<div class="big">${js.done.toLocaleString()} emails sorted by Jev</div><p>${(js.done * 4).toLocaleString()} decisions · ${spamCount.toLocaleString()} flagged spam · $${js.cost.toFixed(4)} total · ${js.secs.toFixed(1)} s wall clock · ${avg(js).toFixed(2)} s per email.${source === 'gmail' ? ' Only the sender and subject line were sent.' : ''}</p>`;
+  if (cs && cs.done) {
+    const shared = Object.keys(res.claude).filter(id => res.jev[id]);
+    const agree = shared.filter(id => verdict(res.jev[id]) === verdict(res.claude[id])).length;
+    html += `<div class="vs">
+      <b>Speed per email:</b> Jev ${avg(js).toFixed(2)} s vs Claude Haiku ${avg(cs).toFixed(2)} s, so Jev is ${avg(cs) >= avg(js) ? x(avg(cs), avg(js)) + ' faster' : x(avg(js), avg(cs)) + ' slower'}<br>
+      <b>Cost per email:</b> Jev $${per(js).toFixed(6)} vs Claude Haiku $${per(cs).toFixed(6)}, so Jev is ${per(cs) >= per(js) ? x(per(cs), per(js)) + ' cheaper' : x(per(js), per(cs)) + ' pricier'}<br>
+      <b>Agreement:</b> same label (category or spam) on ${agree} of ${shared.length} emails (${Math.round(100 * agree / (shared.length || 1))}%)${shared.length - agree ? '. Pick <i>Only disagreements</i> to see the rest.' : '.'}
+      ${cs.errors ? `<br><b>Claude errors:</b> ${cs.errors} emails failed (see the banner)` : ''}
+    </div>`;
+  }
+  $('result').innerHTML = html;
+  $('result').style.display = 'block';
 };
-$('stop').onclick = () => { runId++; if (ctrl) ctrl.abort(); clearInterval(tick); $('go').disabled = false; };
+$('stop').onclick = () => { runId++; ctrls.forEach(c => c.abort()); clearInterval(tick); $('go').disabled = false; };
 
 function closeD() { $('drawer').classList.remove('open'); }
 $('x').onclick = closeD; document.addEventListener('keydown', e => { if (e.key === 'Escape') closeD(); });
 document.addEventListener('click', ev => {
   const fr = ev.target.closest('.fr'); if (!fr) return;
   const id = source === 'gmail' ? fr.dataset.id : +fr.dataset.id;
-  const r = res[id]; if (!r) return;
+  const j = res.jev[id], c = res.claude[id]; if (!j && !c) return;
   const subject = fr.querySelector('.s')?.textContent || '';
-  $('dbody').innerHTML = `<div class="ttl">${esc(subject)}</div>
-    <h4 style="color:var(--j)">Jev: ${label(r)} · ${r.category} · ${r.priority} priority · reply ${r.reply ? 'yes' : 'no'} <span>${(r.ms / 1000).toFixed(2)} s · $${r.cost.toFixed(6)}</span></h4>
-    <h4>Request to Jev <span>POST api.typesafe.ai/v1/systemone</span></h4><pre>${esc(JSON.stringify(r.request, null, 2))}</pre>
-    <h4>Raw response <span>${esc(r.model)}</span></h4><pre>${esc(JSON.stringify(r.raw, null, 2))}</pre>`;
+  const block = (name, color, r, endpoint) => r ? `
+    <h4 style="color:${color}">${name}: ${label(r)} · ${esc(r.category)} · ${r.priority} priority · reply ${r.reply ? 'yes' : 'no'} <span>${(r.ms / 1000).toFixed(2)} s · $${r.cost.toFixed(6)}</span></h4>
+    <h4>Request <span>${endpoint}</span></h4><pre>${esc(JSON.stringify(r.request, null, 2))}</pre>
+    <h4>Raw response <span>${esc(r.model)}</span></h4><pre>${esc(JSON.stringify(r.raw, null, 2))}</pre>` : '';
+  $('dbody').innerHTML = `<div class="ttl">${esc(subject)}</div>` +
+    block('Jev', 'var(--j)', j, 'POST api.typesafe.ai/v1/systemone') +
+    block('Claude Haiku 4.5', 'var(--c)', c, 'POST api.anthropic.com/v1/messages');
   $('drawer').classList.add('open');
 });
 </script>
