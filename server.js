@@ -13,11 +13,12 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json({ limit: '256kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 1,000 real Enron emails (LLM-PBE/enron-email); rebuild with scripts/fetch-enron.js.
 const SAMPLE_INBOX = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'data', 'sample-inbox.json'), 'utf8')
+  fs.readFileSync(path.join(__dirname, 'data', 'enron-inbox.json'), 'utf8')
 );
 
-app.get('/data/sample-inbox.json', (req, res) => res.json(SAMPLE_INBOX));
+app.get('/data/inbox.json', (req, res) => res.json(SAMPLE_INBOX));
 
 // Extensionless aliases, e.g. /send instead of /send.html.
 ['send', 'paste', 'flappy', 'mail'].forEach((page) => {

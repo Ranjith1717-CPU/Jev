@@ -5,7 +5,7 @@ Four small apps showing what [TypeSafe's Jev](https://docs.typesafe.ai) (a "Syst
 - **`/send`** — help-desk complaint triage. One call, eight parallel questions (team, action, refund, urgency, mood, churn risk, prompt-injection check, language) → a routing lane.
 - **`/paste`** — smart paste. Copy a whole résumé once, paste into any form field, Jev picks the exact snippet.
 - **`/flappy`** — Jev plays Flappy Bird. Every flap/wait is a live decision; the game describes itself as text.
-- **`/mail`** — Jev sorts an inbox live: 40 real emails from the classic [Enron-Spam corpus](https://huggingface.co/datasets/SetFit/enron_spam) (20 spam, 20 ham, hand-labeled, so accuracy is checked against a known answer) — or your own Gmail (read-only, subject-lines-only).
+- **`/mail`** — Jev sorts an inbox live: 1,000 real emails randomly sampled from the [Enron email corpus](https://huggingface.co/datasets/LLM-PBE/enron-email) (category, priority, spam, reply-needed) — or your own Gmail (read-only, subject-lines-only).
 
 No page compares Jev against another model — this is purely a Jev showcase.
 
@@ -38,7 +38,7 @@ Jev is priced per input token only (output is free): **$0.042 per 1,000 input to
 
 - `/send` and `/paste`: a few hundred tokens per click, a fraction of a cent.
 - `/flappy`: makes a call roughly every 0.14s while the bird is alive (several in flight at once) — a few minutes of play is still well under a cent, but stopping the game (the **Stop** button) ends the calls immediately.
-- `/mail`: bundled sample inbox caps at 40 emails; Gmail mode caps at 50 per run. Both run 8 requests concurrently.
+- `/mail`: the Enron inbox runs up to all 1,000 emails (≈ 1,000 Jev calls — use 10/25/100 for a quick demo); Gmail mode caps at 50 per run. Both run 8 requests concurrently.
 
 ## Connecting Gmail (optional)
 
@@ -66,13 +66,16 @@ The OAuth token is stored locally in `.gmail-token.json` (gitignored, single-use
 server.js          Express app: static pages + /api/* routes
 lib/jev.js          Jev API client (fetch wrapper, cost calc)
 lib/gmail.js         Gmail OAuth + metadata-only client
-data/sample-inbox.json   40 real, hand-labeled Enron-Spam emails for /mail
+data/enron-inbox.json    1,000 real Enron emails for /mail
+scripts/fetch-enron.js   Rebuilds data/enron-inbox.json from Hugging Face
 public/              The four demo pages + landing page
 ```
 
 ### Dataset credit
 
-`data/sample-inbox.json` is a small (40-email), lightly-cleaned sample drawn from the classic **Enron-Spam** corpus, via the [`SetFit/enron_spam`](https://huggingface.co/datasets/SetFit/enron_spam) dataset on Hugging Face (subject/body text, label 0=ham/1=spam). Original corpus: V. Metsis, I. Androutsopoulos, G. Paliouras, *"Spam Filtering with Naive Bayes – Which Naive Bayes?"*, CEAS 2006.
+`data/enron-inbox.json` is a random, lightly-cleaned sample of 1,000 emails from the public **Enron email corpus**, via the [`LLM-PBE/enron-email`](https://huggingface.co/datasets/LLM-PBE/enron-email) dataset on Hugging Face (~490k emails, raw text). Subjects and senders are parsed from the text where present; bodies are trimmed to 1,500 characters. The emails are unlabeled, so the demo shows what Jev decides rather than an accuracy score.
+
+To rebuild it (a different size or sample), run `node scripts/fetch-enron.js [count] [seed]` (defaults: 1000, 42). It pulls rows through the Hugging Face datasets-server API, so no Python or full download is needed.
 
 ## Deploying
 

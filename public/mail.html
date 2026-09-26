@@ -67,7 +67,6 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
 .chip{display:inline-block;font-size:12.5px;font-weight:500;padding:3px 10px;border-radius:999px;background:#F1F3F2;color:#56605E}
 .chip.spam{background:#FBEBEC;color:var(--warn)}
 .ok{color:var(--j);font-weight:700;margin-left:4px}.bad{color:var(--warn);font-weight:700;margin-left:4px}
-.fr.miss{background:#FFF8F8}
 .empty{padding:28px 20px;text-align:center;color:var(--muted);font-size:14px}
 .result{margin-top:20px;border-radius:18px;padding:22px 26px;background:#EEF7F5;border:1px solid #CFE7E3;display:none;max-width:600px}
 .result .big{font-family:"Space Grotesk",sans-serif;font-size:30px;font-weight:700;color:var(--j)}
@@ -90,8 +89,8 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
 <div class="qs"><span>What kind of email?</span><span>How important?</span><span>Is it spam?</span><span>Needs a reply?</span></div>
 
 <div class="source">
-  <div class="seg" id="source"><button data-s="sample" class="on">Sample inbox</button><button data-s="gmail">My Gmail</button></div>
-  <div class="seg" id="size"><button data-n="10">10</button><button data-n="25" class="on">25</button><button data-n="40">All 40</button></div>
+  <div class="seg" id="source"><button data-s="sample" class="on">Enron inbox</button><button data-s="gmail">My Gmail</button></div>
+  <div class="seg" id="size"><button data-n="10">10</button><button data-n="25" class="on">25</button><button data-n="100">100</button><button data-n="1000">All 1,000</button></div>
 </div>
 
 <div class="gpanel" id="gpanel">
@@ -119,10 +118,9 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
   <div class="clock" id="jt">0.0<small>s</small></div>
   <div class="prog"><i id="jp"></i></div>
   <div class="count" id="jn"><b>0</b> / 25 emails</div>
-  <div class="nums" id="nums">
+  <div class="nums two" id="nums">
     <div><b id="jc">$0</b><span>cost</span></div>
     <div><b id="jl">–</b><span>per email</span></div>
-    <div><b id="ja">–</b><span>spam accuracy</span></div>
   </div>
 </div>
 
@@ -131,7 +129,7 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
 <div class="feed">
   <div class="feedtop"><h3 id="feedTitle">Every email<span>newest first · click one to see the full request/response</span></h3>
     <div class="filter" id="filter"><button data-f="all" class="on">All</button><button data-f="spam">Only flagged spam</button></div></div>
-  <div class="fh" id="fh"><span>Email subject</span><span>Real label</span><span>Jev says</span></div>
+  <div class="fh" id="fh"><span>Email subject</span><span>From</span><span>Jev says</span></div>
   <div id="feed"><div class="empty">Press Start to see each email land here.</div></div>
 </div>
 <div class="drawer" id="drawer"><button class="x" id="x">&times;</button><div id="dbody"></div></div>
@@ -144,7 +142,7 @@ const label = x => x ? (x.spam ? 'Spam' : 'Not spam') : '…';
 let source = 'sample', N = 25, runId = 0, res = {}, ctrl = null, tick = null, filt = 'all';
 let SAMPLE = [], gmailItems = [], gmailConnected = false, gmailConfigured = false;
 
-fetch('/data/sample-inbox.json').then(r => r.json()).then(d => { SAMPLE = d; });
+fetch('/data/inbox.json').then(r => r.json()).then(d => { SAMPLE = d; });
 
 function showBanner(kind, msg) {
   const b = $('banner'); b.className = 'banner show ' + kind; b.textContent = msg;
@@ -176,27 +174,21 @@ $('gDisconnect').onclick = async () => { await fetch('/api/gmail/disconnect', { 
 function applySource() {
   const isGmail = source === 'gmail';
   $('gpanel').classList.toggle('show', isGmail);
-  $('fh').innerHTML = isGmail ? '<span>Email subject</span><span>From</span><span>Jev says</span>' : '<span>Email subject</span><span>Real label</span><span>Jev says</span>';
-  $('nums').className = 'nums' + (isGmail ? ' two' : '');
-  $('nums').innerHTML = isGmail
-    ? '<div><b id="jc">$0</b><span>cost</span></div><div><b id="jl">–</b><span>per email</span></div>'
-    : '<div><b id="jc">$0</b><span>cost</span></div><div><b id="jl">–</b><span>per email</span></div><div><b id="ja">–</b><span>spam accuracy</span></div>';
-  $('filter').innerHTML = isGmail
-    ? '<button data-f="all" class="on">All</button><button data-f="spam">Only flagged spam</button>'
-    : '<button data-f="all" class="on">All</button><button data-f="miss">Only mistakes</button>';
-  wireFilter();
+  filt = 'all';
+  document.querySelectorAll('#filter button').forEach(x => x.classList.toggle('on', x.dataset.f === 'all'));
   $('subline').textContent = isGmail
     ? 'Reads your most recent Gmail inbox headers only (sender + subject, never the body) and classifies each one.'
-    : 'Real-looking sample emails, each hand-labeled spam or not, so accuracy is checked against a known answer.';
+    : '1,000 real emails from the Enron corpus (LLM-PBE/enron-email), randomly sampled. Jev reads the subject and body and sorts each one.';
   $('feed').innerHTML = '<div class="empty">Press Start to see each email land here.</div>';
   $('result').style.display = 'none';
-  document.querySelectorAll('#size button').forEach(b => b.style.display = isGmail && b.dataset.n === '40' ? 'none' : '');
-  if (isGmail && N === 40) { N = 25; document.querySelectorAll('#size button').forEach(b => b.classList.toggle('on', b.dataset.n === '25')); }
+  // Gmail mode caps at 50 per run.
+  document.querySelectorAll('#size button').forEach(b => b.style.display = isGmail && +b.dataset.n > 50 ? 'none' : '');
+  if (isGmail && N > 50) { N = 25; document.querySelectorAll('#size button').forEach(b => b.classList.toggle('on', b.dataset.n === '25')); }
 }
 function wireFilter() {
   document.querySelectorAll('#filter button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#filter button').forEach(x => x.classList.toggle('on', x === b)); filt = b.dataset.f;
-    document.querySelectorAll('.fr').forEach(r => r.style.display = (filt !== 'all' && !r.classList.contains(filt === 'miss' ? 'miss' : 'isspam')) ? 'none' : '');
+    document.querySelectorAll('.fr').forEach(r => r.style.display = (filt !== 'all' && !r.classList.contains('isspam')) ? 'none' : '');
   });
 }
 document.querySelectorAll('#source button').forEach(b => b.onclick = () => {
@@ -206,23 +198,18 @@ document.querySelectorAll('#size button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#size button').forEach(x => x.classList.toggle('on', x === b)); N = +b.dataset.n;
   $('jn').innerHTML = `<b>0</b> / ${N.toLocaleString()} emails`;
 });
+wireFilter();
 applySource();
 
-function feedRowSample(e) {
-  const r = res[e.id];
-  const miss = r && r.spam !== !!e.spam;
-  const c = r ? `<span class="chip ${r.spam ? 'spam' : ''}">${label(r)}</span><span class="${r.spam === !!e.spam ? 'ok' : 'bad'}">${r.spam === !!e.spam ? '✓' : '✗'}</span>` : '<span class="chip" style="opacity:.4">…</span>';
-  return `<div class="fr ${miss ? 'miss' : ''}" data-id="${e.id}"><span class="s">${esc(e.subject)}</span><span><span class="chip ${e.spam ? 'spam' : ''}">${e.spam ? 'Spam' : 'Not spam'}</span></span><span>${c}</span></div>`;
-}
-function feedRowGmail(e) {
+function feedRow(e) {
   const r = res[e.id];
   const isspam = r && r.spam;
   const c = r ? `<span class="chip ${r.spam ? 'spam' : ''}">${r.spam ? 'Flagged spam' : r.category}</span>` : '<span class="chip" style="opacity:.4">…</span>';
-  return `<div class="fr ${isspam ? 'isspam' : ''}" data-id="${e.id}"><span class="s">${esc(e.subject)}</span><span class="s">${esc(e.from || '')}</span><span>${c}</span></div>`;
+  return `<div class="fr ${isspam ? 'isspam' : ''}" data-id="${e.id}"><span class="s">${esc(e.subject)}</span><span class="s">${esc(e.from || '—')}</span><span>${c}</span></div>`;
 }
 function upsert(e) {
   const f = $('feed'); const em = f.querySelector('.empty'); if (em) em.remove();
-  const row = source === 'gmail' ? feedRowGmail(e) : feedRowSample(e);
+  const row = feedRow(e);
   const old = f.querySelector(`.fr[data-id="${e.id}"]`);
   if (old) old.outerHTML = row; else f.insertAdjacentHTML('afterbegin', row);
 }
@@ -238,7 +225,7 @@ $('go').onclick = async () => {
   const my = ++runId;
   hideBanner();
   res = {}; $('feed').innerHTML = '<div class="empty">Waiting for the first answers…</div>'; $('result').style.display = 'none'; $('go').disabled = true;
-  let done = 0, correct = 0, cost = 0, msSum = 0;
+  let done = 0, cost = 0, msSum = 0;
   const t0 = performance.now();
   let byId = {};
   const n = N;
@@ -268,7 +255,6 @@ $('go').onclick = async () => {
         if (source === 'gmail') { byId[m.id] = { id: m.id, subject: m.subject, from: m.from }; }
         const e = byId[m.id], r = m.r; res[e.id] = r;
         done++; cost += r.cost; msSum += r.ms;
-        if (source === 'sample' && r.spam === !!e.spam) correct++;
         $('jm').textContent = r.model; paint(done, n, cost); upsert(e);
       }
     }
@@ -276,12 +262,9 @@ $('go').onclick = async () => {
   clearInterval(tick); $('go').disabled = false;
   if (my !== runId) return;
 
-  if (source === 'sample') $('ja').textContent = done ? Math.round(100 * correct / done) + '%' : '–';
-
   if (done >= n && done > 0) {
-    $('result').innerHTML = source === 'sample'
-      ? `<div class="big">${Math.round(100 * correct / done)}% spam accuracy</div><p>${done.toLocaleString()} emails · ${(done * 4).toLocaleString()} decisions · $${cost.toFixed(4)} total · ${(msSum / done / 1000).toFixed(2)} s per email average.</p>`
-      : `<div class="big">${done.toLocaleString()} emails sorted</div><p>${(done * 4).toLocaleString()} decisions · $${cost.toFixed(4)} total · ${(msSum / done / 1000).toFixed(2)} s per email average. Jev only ever saw the sender and subject line.</p>`;
+    const spamCount = Object.values(res).filter(r => r.spam).length;
+    $('result').innerHTML = `<div class="big">${done.toLocaleString()} emails sorted</div><p>${(done * 4).toLocaleString()} decisions · ${spamCount.toLocaleString()} flagged spam · ${cost.toFixed(4)} total · ${(msSum / done / 1000).toFixed(2)} s per email average.${source === 'gmail' ? ' Jev only ever saw the sender and subject line.' : ''}</p>`;
     $('result').style.display = 'block';
   }
 };
