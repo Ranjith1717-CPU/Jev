@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jev demos</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1C2322;--muted:#7A8381;--line:#E4E9E8;--accent:#149A8E}
+body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif;padding:56px 24px;max-width:960px;margin:0 auto}
+h1{font-family:"Space Grotesk",sans-serif;font-size:42px}
+h1 span{color:var(--accent)}
+.sub{margin-top:10px;color:var(--muted);font-size:18px;max-width:640px;line-height:1.55}
+.banner{margin-top:18px;padding:12px 16px;border-radius:10px;font-size:14px;background:#FBEBEC;border:1px solid #F3D3D5;color:#9A2A30;display:none}
+.banner.show{display:block}
+.grid{margin-top:36px;display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+a.card{display:block;background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 26px;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s}
+a.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.card h2{font-family:"Space Grotesk",sans-serif;font-size:22px}
+.card p{margin-top:8px;color:var(--muted);font-size:15px;line-height:1.5}
+.tag{display:inline-block;margin-top:14px;font-family:"Space Mono",monospace;font-size:12px;color:var(--accent);background:#EEF7F5;border-radius:999px;padding:4px 10px}
+footer{margin-top:48px;color:var(--muted);font-size:13.5px;line-height:1.6}
+footer code{background:#F0F3F2;border-radius:5px;padding:1px 6px;font-family:"Space Mono",monospace}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>Jev <span>demos</span></h1>
+<p class="sub">Four small apps showing what TypeSafe's Jev model is for: fast, typed, structured decisions — not generated text. Every page shows the real request and response.</p>
+<div class="banner" id="banner">Server has no <code>TYPESAFE_API_KEY</code> set yet — the demos will error until you add one to <code>.env</code>. See the setup note below.</div>
+<div class="grid">
+  <a class="card" href="/send.html">
+    <h2>Help-desk triage</h2>
+    <p>Write a customer complaint. One call, eight parallel questions: team, action, refund, urgency, mood, churn risk, prompt-injection check, language.</p>
+    <span class="tag">/send</span>
+  </a>
+  <a class="card" href="/paste.html">
+    <h2>Smart paste</h2>
+    <p>Copy a whole résumé once. Paste into any form field. Jev picks the exact snippet that belongs there.</p>
+    <span class="tag">/paste</span>
+  </a>
+  <a class="card" href="/flappy.html">
+    <h2>Jev plays Flappy Bird</h2>
+    <p>Every move — flap or wait — is a live Jev decision. The game only describes what's happening in text; Jev decides.</p>
+    <span class="tag">/flappy</span>
+  </a>
+  <a class="card" href="/mail.html">
+    <h2>Sort an inbox</h2>
+    <p>Jev classifies a sample inbox live (spam, priority, category, reply-needed) — or connect your own Gmail, read-only, subject lines only.</p>
+    <span class="tag">/mail</span>
+  </a>
+</div>
+<footer>
+  Server setup: copy <code>.env.example</code> to <code>.env</code>, add your <code>TYPESAFE_API_KEY</code> from
+  <code>console.typesafe.ai/keys</code>, then <code>npm install &amp;&amp; npm start</code>. Gmail is optional — see README.md.
+</footer>
+<script>
+fetch('/api/health').then(r => r.json()).then(h => { if (!h.jevConfigured) document.getElementById('banner').classList.add('show'); }).catch(() => {});
+</script>
+</body>
+</html>

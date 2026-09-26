@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart paste · Jev</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400&display=swap");
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1C2322;--muted:#8A9391;--line:#E4E9E8;--accent:#149A8E}
+body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif}
+header{padding:26px 40px 0}
+.back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:10px}
+.back:hover{color:var(--accent)}
+h1{font-family:"Space Grotesk",sans-serif;font-size:28px}
+h1 span{color:var(--accent)}
+.sub{margin-top:6px;color:var(--muted);font-size:16px}
+.wrap{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:18px 40px 24px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 26px}
+.lbl{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.copy{font:inherit;font-size:13px;font-weight:600;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--ink)}
+.copy.done{color:var(--accent);border-color:var(--accent)}
+#resume{white-space:pre-wrap;font-size:15px;line-height:1.6}
+#resume .n{font-family:"Space Grotesk",sans-serif;font-size:24px;font-weight:700}
+.f{margin-bottom:6px}
+.f label{display:block;font-size:13.5px;font-weight:600;margin-bottom:4px}
+.f input,.f textarea{width:100%;font:inherit;font-size:15px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;outline:none}
+.f textarea{height:52px;resize:none}
+.f input:focus,.f textarea:focus{border-color:var(--accent)}
+.f .tag{height:16px;margin-top:4px;font-family:"Space Mono",monospace;font-size:11.5px;color:var(--accent)}
+.f.flash input,.f.flash textarea{background:#EEF7F5;transition:background .6s}
+.hint{margin-top:6px;font-size:14px;color:var(--muted)}
+.key{display:inline-block;font-family:"Space Mono",monospace;font-size:12px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;background:#fff}
+.wrap{grid-template-columns:0.9fr 1fr 1fr!important;gap:20px!important}
+.stats{display:flex;gap:26px;flex-wrap:wrap;font-family:"Space Mono",monospace;font-size:12px;color:var(--muted);margin-bottom:12px}
+.stats b{display:block;font-family:"Space Grotesk",sans-serif;font-size:20px;color:var(--ink)}
+.stats .a b{color:var(--accent)}
+.side h4{font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 6px;display:flex;justify-content:space-between}
+.side h4 span{font-family:"Space Mono",monospace;font-weight:400;font-size:11px}
+.side pre{font-family:"Space Mono",monospace;font-size:11px;line-height:1.45;background:#F4F6F5;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;color:#4F5A58;max-height:260px;overflow:auto}
+.side .empty{color:var(--muted);font-size:14px;padding:30px 4px;text-align:center}
+.f.sel input,.f.sel textarea{border-color:var(--accent)}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="/">← All demos</a>
+  <h1>Smart <span>paste.</span></h1>
+  <p class="sub">Copy the whole résumé once. Paste into any field. Jev picks the right piece.</p>
+</header>
+<div class="wrap">
+  <div class="card">
+    <div class="lbl">Résumé <button class="copy" id="copyAll">Copy all</button></div>
+    <div id="resume"><span class="n">Priya Sharma</span>
+Senior Product Manager
+priya.sharma@example.com
++91 98450 12345
+Bengaluru, India
+linkedin.com/in/priyasharma-pm
+
+PROFILE
+Product manager who ships AI features for payments and support teams.
+
+EXPERIENCE
+Senior Product Manager, Razorpay (2022 to present)
+Led the AI support assistant used by 40,000 merchants.
+Product Manager, Swiggy (2019 to 2022)
+Owned delivery-time predictions for 500 cities.
+
+EDUCATION
+IIT Bombay, B.Tech in Computer Science, 2017</div>
+  </div>
+  <div class="card">
+    <div class="lbl">Job application</div>
+    <form id="form" autocomplete="off">
+      <div class="f"><label>Full name</label><input data-field="Full name"><div class="tag"></div></div>
+      <div class="f"><label>Email address</label><input data-field="Email address"><div class="tag"></div></div>
+      <div class="f"><label>Phone number</label><input data-field="Phone number"><div class="tag"></div></div>
+      <div class="f"><label>Current city</label><input data-field="Current city"><div class="tag"></div></div>
+      <div class="f"><label>LinkedIn profile</label><input data-field="LinkedIn profile URL"><div class="tag"></div></div>
+      <div class="f"><label>Current company</label><input data-field="Current company and role"><div class="tag"></div></div>
+      <div class="f"><label>University</label><input data-field="University and degree"><div class="tag"></div></div>
+      <div class="f"><label>Short summary</label><textarea data-field="Short professional summary"></textarea><div class="tag"></div></div>
+    </form>
+    <p class="hint">Click a field and press <span class="key">⌘V</span></p>
+  </div>
+  <div class="card side">
+    <div class="stats">
+      <div><b id="st-model">–</b>model</div>
+      <div class="a"><b id="st-last">–</b>last pick</div>
+      <div><b id="st-n">0</b>pastes</div>
+      <div class="a"><b id="st-cost">$0</b>total cost</div>
+    </div>
+    <div id="detail"><div class="empty">Paste into any field to see the exact request sent to Jev and its raw response.</div></div>
+  </div>
+</div>
+<script>
+const resumeText = () => document.getElementById('resume').innerText;
+document.getElementById('copyAll').onclick = async e => {
+  try { await navigator.clipboard.writeText(resumeText()); } catch (_) {}
+  e.target.textContent = 'Copied'; e.target.classList.add('done');
+};
+function snippets(text) {
+  const out = [];
+  text.split('\n').map(s => s.trim()).filter(s => s && !(/[A-Z]/.test(s) && s === s.toUpperCase())).forEach(s => {
+    out.push(s);
+    const m = s.match(/^(.+?),\s*(.+?)\s*\((.+)\)$/); // "Role, Company (dates)"
+    if (m) { out.push(m[1]); out.push(m[2]); }
+  });
+  return [...new Set(out)];
+}
+document.querySelectorAll('[data-field]').forEach(el => {
+  el.addEventListener('paste', async ev => {
+    const text = (ev.clipboardData || window.clipboardData).getData('text');
+    if (!text || !text.includes('\n')) return; // single values paste normally
+    ev.preventDefault();
+    const box = el.parentElement, tag = box.querySelector('.tag');
+    tag.textContent = 'Jev is picking…';
+    try {
+      const r = await fetch('/api/paste', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field: el.dataset.field, snippets: snippets(text) }) }).then(r => r.json());
+      if (r.error) throw new Error(r.error);
+      el.value = r.text;
+      window.__n = (window.__n || 0) + 1; window.__cost = (window.__cost || 0) + (r.cost || 0);
+      document.getElementById('st-model').textContent = r.model;
+      document.getElementById('st-last').textContent = (r.ms / 1000).toFixed(2) + ' s';
+      document.getElementById('st-n').textContent = window.__n;
+      document.getElementById('st-cost').textContent = '$' + window.__cost.toFixed(5);
+      const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      document.querySelectorAll('.f.sel').forEach(n => n.classList.remove('sel')); box.classList.add('sel');
+      document.getElementById('detail').innerHTML = `<h4>Field: ${esc(el.dataset.field)}</h4>
+        <h4>Request sent <span>POST api.typesafe.ai/v1/systemone</span></h4><pre>${esc(JSON.stringify(r.request, null, 2))}</pre>
+        <h4>Raw response <span>${esc(r.model)} · ${(r.ms / 1000).toFixed(2)} s · ${r.tokens} tokens · $${r.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify(r.raw, null, 2))}</pre>`;
+      tag.textContent = r.text ? `Jev picked this in ${(r.ms / 1000).toFixed(2)} s · ${Math.round(r.p * 100)}% sure` : 'Nothing in the copied text fits this field';
+      box.classList.add('flash'); setTimeout(() => box.classList.remove('flash'), 700);
+    } catch (e) { tag.textContent = e.message; }
+  });
+});
+</script>
+</body>
+</html>

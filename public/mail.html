@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jev sorts an inbox</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1C2322;--muted:#7F8886;--line:#E6EAE9;--j:#149A8E;--warn:#D9535A;--amber:#C98A12}
+body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif;padding:32px 48px 48px;max-width:1200px;margin:0 auto}
+.back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:10px}
+.back:hover{color:var(--j)}
+h1{font-family:"Space Grotesk",sans-serif;font-size:32px}
+h1 span{color:var(--j)}
+.sub{margin-top:8px;color:var(--muted);font-size:16px;max-width:820px;line-height:1.5}
+.qs{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}
+.qs span{font-size:13.5px;background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.source{margin-top:22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.seg button{font:inherit;font-size:15px;border:0;background:none;padding:11px 18px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:#F0F3F2;color:var(--ink);font-weight:600}
+.gpanel{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 22px;display:none}
+.gpanel.show{display:block}
+.gpanel .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.gpanel p{font-size:14px;color:var(--muted);line-height:1.5;max-width:640px}
+.gconnect{font:inherit;font-size:15px;font-weight:600;border:0;background:#1a73e8;color:#fff;padding:11px 22px;border-radius:10px;cursor:pointer}
+.gconnect:disabled{opacity:.4;cursor:not-allowed}
+.gstatus{font-size:14px;color:var(--muted)}
+.gstatus b{color:var(--ink)}
+.gdisconnect{font:inherit;font-size:13px;border:0;background:none;color:var(--warn);text-decoration:underline;cursor:pointer}
+.banner{margin-top:14px;padding:12px 16px;border-radius:10px;font-size:14px;display:none}
+.banner.show{display:block}
+.banner.ok{background:#EEF7F5;border:1px solid #CFE7E3;color:#0F5F57}
+.banner.err{background:#FBEBEC;border:1px solid #F3D3D5;color:#9A2A30}
+.bar{margin-top:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+button.go{font:inherit;font-size:16px;font-weight:600;border:0;background:var(--ink);color:#fff;padding:12px 28px;border-radius:12px;cursor:pointer}
+button.go:disabled{opacity:.35}
+button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--muted);padding:10px;cursor:pointer;text-decoration:underline}
+.lane{margin-top:24px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:22px 26px;max-width:420px}
+.top{display:flex;justify-content:space-between;align-items:baseline}
+.name{font-family:"Space Grotesk",sans-serif;font-size:22px;font-weight:700;color:var(--j)}
+.model{font-family:"Space Mono",monospace;font-size:12px;color:var(--muted)}
+.clock{margin-top:10px;font-family:"Space Grotesk",sans-serif;font-size:56px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.clock small{font-size:20px;color:var(--muted);font-weight:600;margin-left:4px}
+.prog{margin-top:16px;height:10px;background:#F0F3F2;border-radius:99px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;border-radius:99px;background:var(--j);transition:width .15s linear}
+.count{margin-top:8px;font-size:14px;color:var(--muted)}
+.count b{color:var(--ink)}
+.nums{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr)}
+.nums b{display:block;font-family:"Space Grotesk",sans-serif;font-size:26px}
+.nums span{font-size:13px;color:var(--muted)}
+.nums.two{grid-template-columns:repeat(2,1fr)}
+.feed{margin-top:24px;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.feedtop{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
+.feedtop h3{font-size:15px;font-weight:600}
+.feedtop h3 span{font-weight:400;color:var(--muted);font-size:13.5px;margin-left:6px}
+.filter{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.filter button{font:inherit;font-size:13px;border:0;background:none;padding:7px 12px;cursor:pointer;color:var(--muted)}
+.filter button.on{background:#F0F3F2;color:var(--ink);font-weight:600}
+.fh,.fr{display:grid;grid-template-columns:1fr 150px 190px;gap:12px;align-items:center;padding:10px 20px}
+.fh{font-size:12px;font-weight:600;color:var(--muted);background:#FAFBFB;border-bottom:1px solid var(--line)}
+#feed{max-height:440px;overflow-y:auto}
+.fr{border-bottom:1px solid #F1F3F2;font-size:14.5px;cursor:pointer;animation:pop .3s ease}
+.fr:hover{background:#FAFCFB}
+.fr .s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-block;font-size:12.5px;font-weight:500;padding:3px 10px;border-radius:999px;background:#F1F3F2;color:#56605E}
+.chip.spam{background:#FBEBEC;color:var(--warn)}
+.ok{color:var(--j);font-weight:700;margin-left:4px}.bad{color:var(--warn);font-weight:700;margin-left:4px}
+.fr.miss{background:#FFF8F8}
+.empty{padding:28px 20px;text-align:center;color:var(--muted);font-size:14px}
+.result{margin-top:20px;border-radius:18px;padding:22px 26px;background:#EEF7F5;border:1px solid #CFE7E3;display:none;max-width:600px}
+.result .big{font-family:"Space Grotesk",sans-serif;font-size:30px;font-weight:700;color:var(--j)}
+.result p{margin-top:6px;font-size:15px;color:var(--muted)}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.drawer{position:fixed;top:0;right:0;width:520px;height:100vh;background:#fff;border-left:1px solid var(--line);box-shadow:-10px 0 40px rgba(20,30,28,.08);padding:24px;overflow:auto;transform:translateX(100%);transition:transform .25s ease;z-index:10}
+.drawer.open{transform:none}
+.drawer .x{position:absolute;top:16px;right:18px;font-size:24px;border:0;background:none;cursor:pointer;color:var(--muted)}
+.drawer .ttl{font-family:"Space Grotesk",sans-serif;font-size:19px;font-weight:700;padding-right:30px}
+.drawer .body{margin-top:6px;font-size:13.5px;color:var(--muted);line-height:1.5}
+.drawer h4{font-size:13px;font-weight:600;margin:18px 0 6px;display:flex;justify-content:space-between;gap:8px}
+.drawer h4 span{font-family:"Space Mono",monospace;font-weight:400;font-size:11px;color:var(--muted)}
+.drawer pre{font-family:"Space Mono",monospace;font-size:11px;line-height:1.45;background:#F4F6F5;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;color:#4F5A58;max-height:240px;overflow:auto}
+</style>
+</head>
+<body>
+<a class="back" href="/">← All demos</a>
+<h1><span class="j">Jev</span> sorts an inbox</h1>
+<p class="sub" id="subline">Every email gets four answers from one call each: what kind of email, how important, is it spam, does it need a reply.</p>
+<div class="qs"><span>What kind of email?</span><span>How important?</span><span>Is it spam?</span><span>Needs a reply?</span></div>
+
+<div class="source">
+  <div class="seg" id="source"><button data-s="sample" class="on">Sample inbox</button><button data-s="gmail">My Gmail</button></div>
+  <div class="seg" id="size"><button data-n="10">10</button><button data-n="25" class="on">25</button><button data-n="40">All 40</button></div>
+</div>
+
+<div class="gpanel" id="gpanel">
+  <div id="gConnectRow" class="row">
+    <button class="gconnect" id="gConnect">Connect Gmail</button>
+    <p>Read-only, headers-only access (Google's <code>gmail.metadata</code> scope). Jev only ever sees the sender and subject line of your most recent inbox messages — never the message body.</p>
+  </div>
+  <div id="gConnectedRow" class="row" style="display:none">
+    <span class="gstatus">Connected as <b id="gEmail"></b></span>
+    <button class="gdisconnect" id="gDisconnect">Disconnect</button>
+  </div>
+  <div id="gNotConfigured" style="display:none">
+    <p><b>Gmail isn't configured on this server yet.</b> Create an OAuth client in Google Cloud Console (Gmail API enabled, redirect URI <code id="gRedirect"></code>), then add <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> to your <code>.env</code> file and restart the server. See README.md for the full walkthrough.</p>
+  </div>
+</div>
+
+<div class="banner" id="banner"></div>
+
+<div class="bar">
+  <button class="go" id="go">Start</button><button class="ghost" id="stop">Stop</button>
+</div>
+
+<div class="lane">
+  <div class="top"><span class="name" id="laneName">Jev</span><span class="model" id="jm">jev-1.13.0</span></div>
+  <div class="clock" id="jt">0.0<small>s</small></div>
+  <div class="prog"><i id="jp"></i></div>
+  <div class="count" id="jn"><b>0</b> / 25 emails</div>
+  <div class="nums" id="nums">
+    <div><b id="jc">$0</b><span>cost</span></div>
+    <div><b id="jl">–</b><span>per email</span></div>
+    <div><b id="ja">–</b><span>spam accuracy</span></div>
+  </div>
+</div>
+
+<div class="result" id="result"></div>
+
+<div class="feed">
+  <div class="feedtop"><h3 id="feedTitle">Every email<span>newest first · click one to see the full request/response</span></h3>
+    <div class="filter" id="filter"><button data-f="all" class="on">All</button><button data-f="spam">Only flagged spam</button></div></div>
+  <div class="fh" id="fh"><span>Email subject</span><span>Real label</span><span>Jev says</span></div>
+  <div id="feed"><div class="empty">Press Start to see each email land here.</div></div>
+</div>
+<div class="drawer" id="drawer"><button class="x" id="x">&times;</button><div id="dbody"></div></div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const fmt = s => s < 60 ? s.toFixed(1) + '<small>s</small>' : Math.floor(s / 60) + '<small>m</small> ' + String(Math.floor(s % 60)).padStart(2, '0') + '<small>s</small>';
+const label = x => x ? (x.spam ? 'Spam' : 'Not spam') : '…';
+
+let source = 'sample', N = 25, runId = 0, res = {}, ctrl = null, tick = null, filt = 'all';
+let SAMPLE = [], gmailItems = [], gmailConnected = false, gmailConfigured = false;
+
+fetch('/data/sample-inbox.json').then(r => r.json()).then(d => { SAMPLE = d; });
+
+function showBanner(kind, msg) {
+  const b = $('banner'); b.className = 'banner show ' + kind; b.textContent = msg;
+}
+function hideBanner() { $('banner').classList.remove('show'); }
+
+async function refreshGmailStatus() {
+  try {
+    const s = await fetch('/api/gmail/status').then(r => r.json());
+    gmailConfigured = s.configured; gmailConnected = s.connected;
+    $('gNotConfigured').style.display = gmailConfigured ? 'none' : 'block';
+    $('gConnectRow').style.display = gmailConfigured && !gmailConnected ? 'flex' : 'none';
+    $('gConnectedRow').style.display = gmailConnected ? 'flex' : 'none';
+    if (gmailConnected) $('gEmail').textContent = s.email || '(connected)';
+  } catch (e) {}
+}
+$('gRedirect').textContent = location.origin + '/auth/google/callback';
+refreshGmailStatus();
+
+// handle the redirect back from Google
+const qp = new URLSearchParams(location.search);
+if (qp.get('gmail') === 'connected') { showBanner('ok', 'Gmail connected.'); refreshGmailStatus(); }
+if (qp.get('gmail') === 'error') { showBanner('err', 'Gmail connection failed: ' + (qp.get('msg') || 'unknown error')); }
+if (qp.has('gmail')) history.replaceState({}, '', location.pathname);
+
+$('gConnect').onclick = () => { location.href = '/auth/google'; };
+$('gDisconnect').onclick = async () => { await fetch('/api/gmail/disconnect', { method: 'POST' }); refreshGmailStatus(); };
+
+function applySource() {
+  const isGmail = source === 'gmail';
+  $('gpanel').classList.toggle('show', isGmail);
+  $('fh').innerHTML = isGmail ? '<span>Email subject</span><span>From</span><span>Jev says</span>' : '<span>Email subject</span><span>Real label</span><span>Jev says</span>';
+  $('nums').className = 'nums' + (isGmail ? ' two' : '');
+  $('nums').innerHTML = isGmail
+    ? '<div><b id="jc">$0</b><span>cost</span></div><div><b id="jl">–</b><span>per email</span></div>'
+    : '<div><b id="jc">$0</b><span>cost</span></div><div><b id="jl">–</b><span>per email</span></div><div><b id="ja">–</b><span>spam accuracy</span></div>';
+  $('filter').innerHTML = isGmail
+    ? '<button data-f="all" class="on">All</button><button data-f="spam">Only flagged spam</button>'
+    : '<button data-f="all" class="on">All</button><button data-f="miss">Only mistakes</button>';
+  wireFilter();
+  $('subline').textContent = isGmail
+    ? 'Reads your most recent Gmail inbox headers only (sender + subject, never the body) and classifies each one.'
+    : 'Real-looking sample emails, each hand-labeled spam or not, so accuracy is checked against a known answer.';
+  $('feed').innerHTML = '<div class="empty">Press Start to see each email land here.</div>';
+  $('result').style.display = 'none';
+  document.querySelectorAll('#size button').forEach(b => b.style.display = isGmail && b.dataset.n === '40' ? 'none' : '');
+  if (isGmail && N === 40) { N = 25; document.querySelectorAll('#size button').forEach(b => b.classList.toggle('on', b.dataset.n === '25')); }
+}
+function wireFilter() {
+  document.querySelectorAll('#filter button').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#filter button').forEach(x => x.classList.toggle('on', x === b)); filt = b.dataset.f;
+    document.querySelectorAll('.fr').forEach(r => r.style.display = (filt !== 'all' && !r.classList.contains(filt === 'miss' ? 'miss' : 'isspam')) ? 'none' : '');
+  });
+}
+document.querySelectorAll('#source button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#source button').forEach(x => x.classList.toggle('on', x === b)); source = b.dataset.s; applySource();
+});
+document.querySelectorAll('#size button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#size button').forEach(x => x.classList.toggle('on', x === b)); N = +b.dataset.n;
+  $('jn').innerHTML = `<b>0</b> / ${N.toLocaleString()} emails`;
+});
+applySource();
+
+function feedRowSample(e) {
+  const r = res[e.id];
+  const miss = r && r.spam !== !!e.spam;
+  const c = r ? `<span class="chip ${r.spam ? 'spam' : ''}">${label(r)}</span><span class="${r.spam === !!e.spam ? 'ok' : 'bad'}">${r.spam === !!e.spam ? '✓' : '✗'}</span>` : '<span class="chip" style="opacity:.4">…</span>';
+  return `<div class="fr ${miss ? 'miss' : ''}" data-id="${e.id}"><span class="s">${esc(e.subject)}</span><span><span class="chip ${e.spam ? 'spam' : ''}">${e.spam ? 'Spam' : 'Not spam'}</span></span><span>${c}</span></div>`;
+}
+function feedRowGmail(e) {
+  const r = res[e.id];
+  const isspam = r && r.spam;
+  const c = r ? `<span class="chip ${r.spam ? 'spam' : ''}">${r.spam ? 'Flagged spam' : r.category}</span>` : '<span class="chip" style="opacity:.4">…</span>';
+  return `<div class="fr ${isspam ? 'isspam' : ''}" data-id="${e.id}"><span class="s">${esc(e.subject)}</span><span class="s">${esc(e.from || '')}</span><span>${c}</span></div>`;
+}
+function upsert(e) {
+  const f = $('feed'); const em = f.querySelector('.empty'); if (em) em.remove();
+  const row = source === 'gmail' ? feedRowGmail(e) : feedRowSample(e);
+  const old = f.querySelector(`.fr[data-id="${e.id}"]`);
+  if (old) old.outerHTML = row; else f.insertAdjacentHTML('afterbegin', row);
+}
+
+function paint(done, n, cost) {
+  $('jp').style.width = (100 * done / n) + '%';
+  $('jn').innerHTML = `<b>${done.toLocaleString()}</b> / ${n.toLocaleString()} emails`;
+  $('jc').textContent = '$' + cost.toFixed(4);
+  $('jl').textContent = done ? (cost / done).toFixed(6) : '–';
+}
+
+$('go').onclick = async () => {
+  const my = ++runId;
+  hideBanner();
+  res = {}; $('feed').innerHTML = '<div class="empty">Waiting for the first answers…</div>'; $('result').style.display = 'none'; $('go').disabled = true;
+  let done = 0, correct = 0, cost = 0, msSum = 0;
+  const t0 = performance.now();
+  let byId = {};
+  const n = N;
+
+  if (source === 'sample') {
+    if (!SAMPLE.length) { $('go').disabled = false; return; }
+    byId = Object.fromEntries(SAMPLE.slice(0, n).map(e => [e.id, e]));
+  }
+
+  paint(0, n, 0);
+  clearInterval(tick); tick = setInterval(() => { const s = (performance.now() - t0) / 1000; $('jt').innerHTML = fmt(s); }, 100);
+  ctrl = new AbortController();
+
+  const url = source === 'gmail' ? '/api/mail/gmail/run' : '/api/mail/run';
+  try {
+    const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ n }), signal: ctrl.signal });
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done: streamDone } = await reader.read(); if (streamDone) break;
+      buf += dec.decode(value, { stream: true }); let nl;
+      while ((nl = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, nl); buf = buf.slice(nl + 1); if (!line) continue;
+        const m = JSON.parse(line);
+        if (m.finished) { $('jt').innerHTML = fmt(m.secs); continue; }
+        if (m.error && !m.id) { showBanner('err', m.error); continue; }
+        if (m.error) continue;
+        if (source === 'gmail') { byId[m.id] = { id: m.id, subject: m.subject, from: m.from }; }
+        const e = byId[m.id], r = m.r; res[e.id] = r;
+        done++; cost += r.cost; msSum += r.ms;
+        if (source === 'sample' && r.spam === !!e.spam) correct++;
+        $('jm').textContent = r.model; paint(done, n, cost); upsert(e);
+      }
+    }
+  } catch (err) { /* stopped */ }
+  clearInterval(tick); $('go').disabled = false;
+  if (my !== runId) return;
+
+  if (source === 'sample') $('ja').textContent = done ? Math.round(100 * correct / done) + '%' : '–';
+
+  if (done >= n && done > 0) {
+    $('result').innerHTML = source === 'sample'
+      ? `<div class="big">${Math.round(100 * correct / done)}% spam accuracy</div><p>${done.toLocaleString()} emails · ${(done * 4).toLocaleString()} decisions · $${cost.toFixed(4)} total · ${(msSum / done / 1000).toFixed(2)} s per email average.</p>`
+      : `<div class="big">${done.toLocaleString()} emails sorted</div><p>${(done * 4).toLocaleString()} decisions · $${cost.toFixed(4)} total · ${(msSum / done / 1000).toFixed(2)} s per email average. Jev only ever saw the sender and subject line.</p>`;
+    $('result').style.display = 'block';
+  }
+};
+$('stop').onclick = () => { runId++; if (ctrl) ctrl.abort(); clearInterval(tick); $('go').disabled = false; };
+
+function closeD() { $('drawer').classList.remove('open'); }
+$('x').onclick = closeD; document.addEventListener('keydown', e => { if (e.key === 'Escape') closeD(); });
+document.addEventListener('click', ev => {
+  const fr = ev.target.closest('.fr'); if (!fr) return;
+  const id = source === 'gmail' ? fr.dataset.id : +fr.dataset.id;
+  const r = res[id]; if (!r) return;
+  const subject = fr.querySelector('.s')?.textContent || '';
+  $('dbody').innerHTML = `<div class="ttl">${esc(subject)}</div>
+    <h4 style="color:var(--j)">Jev: ${label(r)} · ${r.category} · ${r.priority} priority · reply ${r.reply ? 'yes' : 'no'} <span>${(r.ms / 1000).toFixed(2)} s · $${r.cost.toFixed(6)}</span></h4>
+    <h4>Request to Jev <span>POST api.typesafe.ai/v1/systemone</span></h4><pre>${esc(JSON.stringify(r.request, null, 2))}</pre>
+    <h4>Raw response <span>${esc(r.model)}</span></h4><pre>${esc(JSON.stringify(r.raw, null, 2))}</pre>`;
+  $('drawer').classList.add('open');
+});
+</script>
+</body>
+</html>

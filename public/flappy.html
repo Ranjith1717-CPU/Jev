@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jev plays Flappy Bird</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1C2322;--muted:#7F8886;--line:#E6EAE9;--accent:#149A8E;--warn:#D9535A}
+body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif;padding:22px 34px}
+h1{font-family:"Space Grotesk",sans-serif;font-size:28px}
+h1 span{color:var(--accent)}
+.back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:10px}
+.back:hover{color:var(--accent)}
+.sub{margin-top:4px;color:var(--muted);font-size:15px}
+.wrap{margin-top:16px;display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start}
+.left{display:flex;flex-direction:column;gap:12px}
+canvas{display:block;border-radius:16px;box-shadow:0 10px 30px rgba(20,30,28,.12)}
+.ctrl{display:flex;gap:10px;align-items:center}
+button.go{font:inherit;font-size:16px;font-weight:600;border:0;background:var(--accent);color:#fff;padding:12px 26px;border-radius:12px;cursor:pointer}
+button.ghost{font:inherit;font-size:14px;border:1px solid var(--line);background:#fff;padding:10px 16px;border-radius:10px;cursor:pointer}
+.right{display:flex;flex-direction:column;gap:12px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.stat b{display:block;font-family:"Space Grotesk",sans-serif;font-size:24px;line-height:1.15}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.a b{color:var(--accent)}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.lbl{font-size:12px;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;gap:10px}
+.lbl span{font-family:"Space Mono",monospace;font-weight:400;font-size:11.5px}
+.seen{margin-top:6px;font-size:16px;line-height:1.5;min-height:48px}
+.bars{margin-top:12px;display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:62px 1fr 48px;gap:10px;align-items:center;font-size:15px;font-weight:600}
+.bar .t{height:22px;background:#F0F3F2;border-radius:7px;overflow:hidden}
+.bar .t i{display:block;height:100%;width:0;border-radius:7px;background:#C9D1CF;transition:width .15s ease}
+.bar.win .t i{background:var(--accent)}
+.bar .v{font-family:"Space Mono",monospace;font-size:13px;text-align:right;color:var(--muted)}
+.bar.win .v{color:var(--accent);font-weight:700}
+.strip{margin-top:12px;display:flex;gap:3px;height:14px;overflow:hidden}
+.strip i{flex:0 0 7px;border-radius:2px;background:#DDE3E2}
+.strip i.f{background:var(--accent)}
+.io{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.io pre{margin-top:8px;font-family:"Space Mono",monospace;font-size:11.5px;line-height:1.5;background:#F4F6F5;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;color:#4F5A58;height:250px;overflow:auto}
+.io pre b{color:var(--accent)}
+.mode{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.mode button{font:inherit;font-size:14.5px;border:0;background:none;padding:11px 14px;cursor:pointer;color:var(--muted)}
+.mode button.on{background:#F0F3F2;color:var(--ink);font-weight:600}
+.hint{font-size:14px;color:var(--ink)}
+canvas.manual{cursor:pointer}
+.note{font-size:12.5px;color:var(--muted);max-width:430px;line-height:1.45}
+</style>
+</head>
+<body>
+<a class="back" href="/">← All demos</a>
+<h1>Jev plays <span>Flappy Bird.</span></h1>
+<p class="sub" id="subt">Every move is a live Jev decision: flap or wait. The game only describes what is happening. Jev decides.</p>
+<div class="wrap">
+  <div class="left">
+    <canvas id="c" width="430" height="620"></canvas>
+    <div class="ctrl"><div class="mode" id="mode"><button data-m="auto" class="on">Jev plays</button><button data-m="manual">You play</button></div><button class="go" id="go">Start</button><button class="ghost" id="stop">Stop</button></div>
+    <p class="hint" id="hint" style="display:none">Press <b>Space</b> or <b>click the game</b> to flap. Jev watches and shows what it would do.</p>
+    <p class="note">Each answer takes about 0.6 s round trip (Jev thinks for about 0.3 s), so the game keeps several questions in flight at once, each about where the bird will be when the answer lands. Jev reads the game as text, not pixels.</p>
+  </div>
+  <div class="right">
+    <div class="stats">
+      <div class="stat a"><b id="sScore">0</b><span>pipes passed</span></div>
+      <div class="stat"><b id="sDec">0</b><span>decisions</span></div>
+      <div class="stat"><b id="sAvg">–</b><span>per decision</span></div>
+      <div class="stat a"><b id="sCost">$0</b><span>total cost</span></div>
+      <div class="stat"><b id="sModel" style="font-size:18px;padding-top:4px">–</b><span>model</span></div>
+    </div>
+    <div class="card">
+      <div class="lbl"><span id="seeLbl" style="font-family:inherit;font-weight:600;font-size:12px">What Jev sees</span> <span id="lat"></span></div>
+      <div class="seen" id="seen">Press Start.</div>
+      <div class="bars">
+        <div class="bar" id="bFlap"><span>Flap</span><div class="t"><i></i></div><span class="v">–</span></div>
+        <div class="bar" id="bWait"><span>Wait</span><div class="t"><i></i></div><span class="v">–</span></div>
+      </div>
+      <div class="strip" id="strip"></div>
+    </div>
+    <div class="io">
+      <div class="card"><div class="lbl">Request sent <span>POST api.typesafe.ai/v1/systemone</span></div><pre id="req">–</pre></div>
+      <div class="card"><div class="lbl">Response <span id="resm"></span></div><pre id="res">–</pre></div>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const cv = $('c'), cx = cv.getContext('2d'), W = cv.width, H = cv.height, GROUND = 96;
+const G = 0.055, FLAP = -2.1, SPEED = 0.8, GAP = 215, PIPE_W = 66, SPACING = 265, BIRD_X = 120, R = 13;
+const ASK_EVERY = 140, MAX_INFLIGHT = 4, FLAP_COOLDOWN = 200;
+let bird, pipes, clouds, groundX = 0, score, running = false, dead = false, game = 0, mode = 'auto';
+let seq = 0, applied = 0, inflight = 0, decisions = 0, cost = 0, msSum = 0, lastFlap = 0, avgLat = 360, wing = 0, askTimer, raf, last = performance.now();
+function reset() {
+  bird = { y: (H - GROUND) / 2, v: 0 }; score = 0; dead = false; groundX = 0; seq = 0; applied = 0; inflight = 0; decisions = 0; cost = 0; msSum = 0;
+  pipes = []; for (let i = 0; i < 3; i++) pipes.push(newPipe(W + 260 + i * SPACING));
+  clouds = [...Array(5)].map((_, i) => ({ x: i * 110 + Math.random() * 60, y: 40 + Math.random() * 180, s: .6 + Math.random() * .6 }));
+}
+function newPipe(x) { return { x, gap: 150 + Math.random() * (H - GROUND - 300), passed: false }; }
+function nextPipe() { return pipes.find(p => p.x + PIPE_W > BIRD_X - R); }
+// describe where the bird will be when this answer lands
+function describe() {
+  const L = (avgLat / 1000) * 60, fy = bird.y + bird.v * L + 0.5 * G * L * L, fv = bird.v + G * L;
+  const p = nextPipe(), off = fy - p.gap;
+  const pos = off > 50 ? 'well below the middle of the gap, close to the bottom pipe' : off > 18 ? 'a little below the middle of the gap' : off < -50 ? 'well above the middle of the gap, close to the top pipe' : off < -18 ? 'a little above the middle of the gap' : 'at the middle of the gap';
+  const vel = fv < -1.5 ? 'rising fast' : fv < -0.4 ? 'rising' : fv > 1.5 ? 'falling fast' : fv > 0.4 ? 'falling' : 'almost still';
+  const dist = p.x - BIRD_X, d = dist > 180 ? 'far ahead' : dist > 70 ? 'coming up' : dist > 0 ? 'very close' : 'right here, the bird is flying through it';
+  const edge = (H - GROUND - fy) < 60 ? ' The bird is close to the ground.' : fy < 50 ? ' The bird is close to the ceiling.' : '';
+  return `The bird is ${pos}. It is ${vel}. The next pipe is ${d}.${edge}`;
+}
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+async function ask() {
+  if (!running || dead || inflight >= MAX_INFLIGHT) return;
+  const my = ++seq, g = game, state = describe(), sent = performance.now(); inflight++;
+  try {
+    const r = await fetch('/api/flappy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state }) }).then(r => r.json());
+    if (r.error) throw new Error(r.error);
+    if (g !== game) return; // answer from a previous game
+    const rtt = performance.now() - sent; decisions++; cost += r.cost; msSum += rtt; avgLat = avgLat * 0.8 + rtt * 0.2;
+    if (my > applied && running && !dead) {
+      applied = my;
+      const now = performance.now();
+      if (mode === 'auto' && r.move === 'flap' && now - lastFlap > FLAP_COOLDOWN) { bird.v = FLAP; lastFlap = now; wing = 1; }
+      show(state, r);
+    }
+    $('sDec').textContent = decisions; $('sAvg').textContent = (msSum / decisions / 1000).toFixed(2) + ' s';
+    $('sCost').textContent = '$' + cost.toFixed(4); $('sModel').textContent = r.model;
+  } catch (e) { if (g === game) $('seen').textContent = e.message; }
+  finally { if (g === game) inflight--; }
+}
+function show(state, r) {
+  const pr = r.raw.answers.move.probabilities, pf = pr.flap || 0, pw = pr.wait || 0;
+  $('seen').textContent = state; $('lat').textContent = `${(r.ms / 1000).toFixed(2)} s`;
+  [['bFlap', pf, 'flap'], ['bWait', pw, 'wait']].forEach(([id, v, k]) => { const el = $(id); el.classList.toggle('win', r.move === k); el.querySelector('i').style.width = Math.round(v * 100) + '%'; el.querySelector('.v').textContent = Math.round(v * 100) + '%'; });
+  const st = $('strip'); st.insertAdjacentHTML('afterbegin', `<i class="${r.move === 'flap' ? 'f' : ''}"></i>`); while (st.children.length > 80) st.lastChild.remove();
+  const q = r.request.questions.move;
+  $('req').innerHTML = esc(`{\n  "model": "${r.request.model}",\n  "state": "…${state}",\n  "questions": {\n    "move": {\n      "type": "${q.type}",\n      "instructions": "${q.instructions}",\n      "criteria": {\n        "flap": "${q.criteria.flap}",\n        "wait": "${q.criteria.wait}"\n      }\n    }\n  }\n}`);
+  $('res').innerHTML = esc(JSON.stringify(r.raw, null, 2)).replace(`"choice": "${r.move}"`, m => `<b>${m}</b>`);
+  $('resm').textContent = `${r.model} · ${r.tokens} tokens · $${r.cost.toFixed(6)}`;
+}
+function update(dt) {
+  if (dead) return;
+  bird.v += G * dt; bird.y += bird.v * dt; wing = Math.max(0, wing - 0.08 * dt);
+  groundX = (groundX - SPEED * dt) % 24;
+  clouds.forEach(c => { c.x -= SPEED * 0.25 * c.s * dt; if (c.x < -80) { c.x = W + 40; c.y = 40 + Math.random() * 180; } });
+  pipes.forEach(p => { p.x -= SPEED * dt; if (!p.passed && p.x + PIPE_W < BIRD_X - R) { p.passed = true; score++; $('sScore').textContent = score; } });
+  if (pipes[0].x + PIPE_W < -20) { pipes.shift(); pipes.push(newPipe(pipes[pipes.length - 1].x + SPACING)); }
+  const p = nextPipe();
+  const hit = p && BIRD_X + R - 3 > p.x && BIRD_X - R + 3 < p.x + PIPE_W && (bird.y - R + 2 < p.gap - GAP / 2 || bird.y + R - 2 > p.gap + GAP / 2);
+  if (bird.y + R > H - GROUND || bird.y - R < 0 || hit) {
+    dead = true; running = false; clearInterval(askTimer);
+    $('seen').textContent = mode === 'manual' ? `You crashed after ${score} pipes. Jev gave ${decisions} opinions while watching. Press Start to try again.` : `Crashed after ${score} pipes and ${decisions} decisions. Press Start to play again.`;
+  }
+}
+function draw() {
+  const sky = cx.createLinearGradient(0, 0, 0, H - GROUND); sky.addColorStop(0, '#4EC0CA'); sky.addColorStop(1, '#B9E8EC');
+  cx.fillStyle = sky; cx.fillRect(0, 0, W, H - GROUND);
+  cx.fillStyle = 'rgba(255,255,255,.9)';
+  clouds.forEach(c => { cx.beginPath(); cx.ellipse(c.x, c.y, 34 * c.s, 14 * c.s, 0, 0, Math.PI * 2); cx.ellipse(c.x + 22 * c.s, c.y - 8 * c.s, 24 * c.s, 14 * c.s, 0, 0, Math.PI * 2); cx.ellipse(c.x - 20 * c.s, c.y - 4 * c.s, 20 * c.s, 11 * c.s, 0, 0, Math.PI * 2); cx.fill(); });
+  cx.fillStyle = '#A8DDB5'; for (let i = 0; i < 9; i++) { const bx = i * 52 - 10, bh = 40 + (i * 37 % 60); cx.fillRect(bx, H - GROUND - bh, 44, bh); }
+  pipes.forEach(p => {
+    const top = p.gap - GAP / 2, bot = p.gap + GAP / 2;
+    const g = cx.createLinearGradient(p.x, 0, p.x + PIPE_W, 0); g.addColorStop(0, '#5BA23B'); g.addColorStop(.35, '#8BD65A'); g.addColorStop(1, '#4B8A30');
+    cx.fillStyle = g; cx.fillRect(p.x, 0, PIPE_W, top - 26); cx.fillRect(p.x, bot + 26, PIPE_W, H - GROUND - bot - 26);
+    cx.fillRect(p.x - 5, top - 26, PIPE_W + 10, 26); cx.fillRect(p.x - 5, bot, PIPE_W + 10, 26);
+    cx.strokeStyle = '#2F5E1E'; cx.lineWidth = 2;
+    cx.strokeRect(p.x, -2, PIPE_W, top - 24); cx.strokeRect(p.x, bot + 26, PIPE_W, H - GROUND - bot - 25);
+    cx.strokeRect(p.x - 5, top - 26, PIPE_W + 10, 26); cx.strokeRect(p.x - 5, bot, PIPE_W + 10, 26);
+  });
+  cx.fillStyle = '#DED895'; cx.fillRect(0, H - GROUND, W, GROUND);
+  cx.fillStyle = '#73BF2E'; cx.fillRect(0, H - GROUND, W, 14);
+  cx.fillStyle = '#9AD04C'; for (let x = groundX; x < W; x += 24) { cx.beginPath(); cx.moveTo(x, H - GROUND + 14); cx.lineTo(x + 12, H - GROUND); cx.lineTo(x + 24, H - GROUND); cx.lineTo(x + 12, H - GROUND + 14); cx.fill(); }
+  cx.fillStyle = '#543847'; cx.fillRect(0, H - GROUND, W, 2);
+  cx.save(); cx.translate(BIRD_X, bird.y); cx.rotate(Math.max(-0.45, Math.min(1.2, bird.v * 0.12)));
+  cx.fillStyle = dead ? '#BDBDBD' : '#F8C630'; cx.strokeStyle = '#543847'; cx.lineWidth = 2;
+  cx.beginPath(); cx.ellipse(0, 0, R + 3, R, 0, 0, Math.PI * 2); cx.fill(); cx.stroke();
+  cx.fillStyle = dead ? '#9E9E9E' : '#F4A62A'; cx.beginPath(); cx.ellipse(-5, 3 - wing * 7, 8, 5 + wing * 2, -0.3 - wing * .5, 0, Math.PI * 2); cx.fill(); cx.stroke();
+  cx.fillStyle = '#fff'; cx.beginPath(); cx.arc(7, -4, 5.5, 0, Math.PI * 2); cx.fill(); cx.stroke();
+  cx.fillStyle = '#1C2322'; cx.beginPath(); cx.arc(8.5, -4, 2.3, 0, Math.PI * 2); cx.fill();
+  cx.fillStyle = '#F2622E'; cx.beginPath(); cx.moveTo(R, 1); cx.lineTo(R + 11, 4); cx.lineTo(R, 8); cx.closePath(); cx.fill(); cx.stroke();
+  cx.restore();
+  cx.font = '700 46px "Space Grotesk", sans-serif'; cx.textAlign = 'center'; cx.lineWidth = 6; cx.strokeStyle = '#543847'; cx.strokeText(score, W / 2, 72); cx.fillStyle = '#fff'; cx.fillText(score, W / 2, 72);
+  if (!running && !dead && decisions === 0) { cx.fillStyle = 'rgba(0,0,0,.25)'; cx.fillRect(0, 0, W, H); cx.fillStyle = '#fff'; cx.font = '700 26px "Space Grotesk", sans-serif'; cx.fillText('Press Start', W / 2, H / 2 - 40); }
+}
+function loop(now) {
+  const dt = Math.min(2.5, (now - last) / (1000 / 60)); last = now;
+  if (running) update(dt);
+  draw(); raf = requestAnimationFrame(loop);
+}
+// measure the real round trip (and wake the server) before the game starts
+async function warm() {
+  const t = performance.now();
+  try { await fetch('/api/flappy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'The bird is at the middle of the gap. It is almost still. The next pipe is far ahead.' }), signal: AbortSignal.timeout(3000) }).then(r => r.json()); avgLat = performance.now() - t; } catch (e) {}
+}
+warm();
+$('go').onclick = async () => {
+  $('go').disabled = true; $('seen').textContent = 'Checking how long a round trip to Jev takes…';
+  await warm(); await warm(); $('go').disabled = false;
+  game++; reset(); ['sScore', 'sDec'].forEach(id => $(id).textContent = 0); $('sCost').textContent = '$0'; $('sAvg').textContent = '–'; $('strip').innerHTML = '';
+  running = true; lastFlap = 0; clearInterval(askTimer); askTimer = setInterval(ask, ASK_EVERY); ask();
+};
+$('stop').onclick = () => { running = false; clearInterval(askTimer); };
+document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x === b)); mode = b.dataset.m;
+  $('hint').style.display = mode === 'manual' ? '' : 'none'; cv.classList.toggle('manual', mode === 'manual');
+  $('seeLbl').textContent = mode === 'manual' ? 'What Jev would do' : 'What Jev sees';
+  $('subt').textContent = mode === 'manual' ? 'You fly the bird. Jev watches every moment and shows what it would do: flap or wait.' : 'Every move is a live Jev decision: flap or wait. The game only describes what is happening. Jev decides.';
+});
+function humanFlap() { if (mode !== 'manual') return; if (!running && !dead && decisions === 0) { $('go').click(); } if (running && !dead) { bird.v = FLAP; wing = 1; } }
+document.addEventListener('keydown', e => { if (e.code === 'Space' && mode === 'manual') { e.preventDefault(); humanFlap(); } });
+cv.addEventListener('mousedown', humanFlap);
+reset(); raf = requestAnimationFrame(loop);
+</script>
+</body>
+</html>
