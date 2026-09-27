@@ -357,13 +357,17 @@ $('go').onclick = async () => {
   const avg = st => st.msSum / st.done / 1000;
   const per = st => st.cost / st.done;
   const x = (a, b) => (a / b >= 10 ? Math.round(a / b) : (a / b).toFixed(1)) + '×';
+  const fmtPlain = s => s < 60 ? s.toFixed(1) + ' s' : Math.floor(s / 60) + ' min ' + Math.floor(s % 60) + ' s';
+  // Wall clock far above what the per-call time explains (4 at a time) means rate-limit waits.
+  const waited = st => st.secs > 2 * (st.msSum / 1000 / 4) + 5;
   const spamCount = Object.values(res.jev).filter(r => r.spam).length;
   let html = `<div class="big">${js.done.toLocaleString()} emails sorted by Jev</div><p>${(js.done * 4).toLocaleString()} decisions · ${spamCount.toLocaleString()} flagged spam · $${js.cost.toFixed(4)} total · ${js.secs.toFixed(1)} s wall clock · ${avg(js).toFixed(2)} s per email.${source === 'gmail' ? ' Only the sender and subject line were sent.' : ''}</p>`;
   if (cs && cs.done) {
     const shared = Object.keys(res.claude).filter(id => res.jev[id]);
     const agree = shared.filter(id => verdict(res.jev[id]) === verdict(res.claude[id])).length;
     html += `<div class="vs">
-      <b>Speed per email:</b> Jev ${avg(js).toFixed(2)} s vs ${RV.short} ${avg(cs).toFixed(2)} s, so Jev is ${avg(cs) >= avg(js) ? x(avg(cs), avg(js)) + ' faster' : x(avg(js), avg(cs)) + ' slower'}<br>
+      <b>Time to finish:</b> Jev ${fmtPlain(js.secs)} for ${js.done} emails vs ${RV.short} ${fmtPlain(cs.secs)} for ${cs.done}, so Jev finished ${cs.secs >= js.secs ? x(cs.secs, js.secs) + ' faster' : x(js.secs, cs.secs) + ' slower'}${waited(cs) ? ` (${RV.short} spent most of that waiting on its rate limit)` : ''}<br>
+      <b>Response time per email:</b> Jev ${avg(js).toFixed(2)} s vs ${RV.short} ${avg(cs).toFixed(2)} s, so Jev answers ${avg(cs) >= avg(js) ? x(avg(cs), avg(js)) + ' faster' : x(avg(js), avg(cs)) + ' slower'}<br>
       <b>Cost per email:</b> Jev $${per(js).toFixed(6)} vs ${RV.short} $${per(cs).toFixed(6)}, so Jev is ${per(cs) >= per(js) ? x(per(cs), per(js)) + ' cheaper' : x(per(js), per(cs)) + ' pricier'}<br>
       <b>Agreement:</b> same label (category or spam) on ${agree} of ${shared.length} emails (${Math.round(100 * agree / (shared.length || 1))}%)${shared.length - agree ? '. Pick <i>Only disagreements</i> to see the rest.' : '.'}
       ${cs.errors ? `<br><b>${RV.short} errors:</b> ${cs.errors} emails failed (see the banner)` : ''}

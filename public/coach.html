@@ -301,7 +301,8 @@ $('go').onclick = async () => {
   let html = `<b>${js.done} sessions read in ${js.secs.toFixed(1)} s for $${js.cost.toFixed(4)}</b> (${(js.msSum / js.done / 1000).toFixed(2)} s and $${(js.cost / js.done).toFixed(6)} per session, ${js.done * 5} decisions). Jev put <b>${act}</b> in <i>Act now</i> and <b>${watch}</b> in <i>Coach watch</i>. Most common next move: <b>${NEXT[topNext[0]]}</b> (${topNext[1]} sessions).`;
   if (cs && cs.done) {
     const avg = st => st.msSum / st.done / 1000, per = st => st.cost / st.done;
-    html += `<br><b>Versus ${RV.name}:</b> ${avg(cs).toFixed(2)} s and $${per(cs).toFixed(6)} per session, so Jev is ${avg(cs) >= avg(js) ? (avg(cs) / avg(js)).toFixed(1) + '× faster' : (avg(js) / avg(cs)).toFixed(1) + '× slower'} and ${per(cs) >= per(js) ? Math.round(per(cs) / per(js)) + '× cheaper' : (per(js) / per(cs)).toFixed(1) + '× pricier'}. Compare their hit rates in the table above.`;
+    const fin = cs.secs >= js.secs ? (cs.secs / js.secs).toFixed(1) + '× faster' : (js.secs / cs.secs).toFixed(1) + '× slower';
+    html += `<br><b>Versus ${RV.name}:</b> finished in ${cs.secs.toFixed(1)} s vs Jev's ${js.secs.toFixed(1)} s, so Jev finished ${fin}${cs.secs > 2 * (cs.msSum / 1000 / 4) + 5 ? ` (${RV.short} spent most of that waiting on its rate limit)` : ''}. Per session: ${avg(cs).toFixed(2)} s and $${per(cs).toFixed(6)}, so Jev answers ${avg(cs) >= avg(js) ? (avg(cs) / avg(js)).toFixed(1) + '× faster' : (avg(js) / avg(cs)).toFixed(1) + '× slower'} and is ${per(cs) >= per(js) ? Math.round(per(cs) / per(js)) + '× cheaper' : (per(js) / per(cs)).toFixed(1) + '× pricier'}. Compare their hit rates in the table above.`;
   }
   $('result').innerHTML = html; $('result').style.display = 'block';
 };
