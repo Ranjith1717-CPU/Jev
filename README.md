@@ -5,10 +5,11 @@ Four small apps showing what [TypeSafe's Jev](https://docs.typesafe.ai) (a "Syst
 - **`/send`** — help-desk complaint triage. One call, eight parallel questions (team, action, refund, urgency, mood, churn risk, prompt-injection check, language) → a routing lane.
 - **`/paste`** — smart paste. Copy a whole résumé once, paste into any form field, Jev picks the exact snippet.
 - **`/flappy`** — Jev plays Flappy Bird. Every flap/wait is a live decision; the game describes itself as text.
+- **`/dino`** — Jev plays the Chrome dino game. Every jump/duck/run is a live decision from a text description of the obstacle ahead (cactus, or a bird flying low, at head height or high).
 - **`/mail`** — Jev sorts an inbox live: 1,000 real emails randomly sampled from the [Enron email corpus](https://huggingface.co/datasets/LLM-PBE/enron-email) (category, priority, spam, reply-needed) — or your own Gmail (read-only, subject-lines-only).
 - **`/coach`**: Jev reads coaching-session write-ups and makes four calls (is anyone's sense of value eroding, is the leader out of bandwidth, too many commitments, is someone drifting) plus the coach's next move, then triages sessions into *Act now / Coach watch / On track*. Ships with 12 fictional sessions; can also run on your own BIG Intelligence export, locally (see below).
 
-**Compare with Claude (optional):** add `ANTHROPIC_API_KEY` to `.env` and `/mail`, `/send` and `/paste` get a "race against Claude Haiku 4.5" toggle. Claude answers the exact same typed questions (via structured outputs), side by side with Jev, and each page shows speed, cost and where the two disagree. Claude Haiku 4.5 costs $1 / $5 per million input / output tokens, roughly 25–30× Jev per email. The Claude lane on `/mail` runs at most 100 emails, 4 at a time. `/flappy` stays Jev-only, since it needs a decision every ~0.14 s.
+**Compare with Claude (optional):** add `ANTHROPIC_API_KEY` to `.env` and `/mail`, `/send` and `/paste` get a "race against Claude Haiku 4.5" toggle. Claude answers the exact same typed questions (via structured outputs), side by side with Jev, and each page shows speed, cost and where the two disagree. Claude Haiku 4.5 costs $1 / $5 per million input / output tokens, roughly 25–30× Jev per email. The Claude lane on `/mail` runs at most 100 emails, 4 at a time. `/flappy` and `/dino` stay Jev-only, since they need a decision every 0.1–0.14 s.
 
 ## Setup
 
@@ -39,6 +40,7 @@ Jev is priced per input token only (output is free): **$0.042 per 1,000 input to
 
 - `/send` and `/paste`: a few hundred tokens per click, a fraction of a cent.
 - `/flappy`: makes a call roughly every 0.14s while the bird is alive (several in flight at once) — a few minutes of play is still well under a cent, but stopping the game (the **Stop** button) ends the calls immediately.
+- `/dino`: like `/flappy`, a call every 0.1 s while the dino is running; **Stop** ends the calls.
 - `/mail`: the Enron inbox runs up to all 1,000 emails (≈ 1,000 Jev calls — use 10/25/100 for a quick demo); Gmail mode caps at 50 per run. Both run 8 requests concurrently.
 
 ## Connecting Gmail (optional)
@@ -73,7 +75,7 @@ scripts/fetch-enron.js   Rebuilds data/enron-inbox.json from Hugging Face
 data/coaching-sample.json       12 fictional coaching sessions for /coach
 scripts/build-coaching-data.js  Anonymises a BIG Intelligence export into data/private/ (git-ignored)
 scripts/tune-coach-question.js  Compares wordings of a /coach question against your local data
-public/              The four demo pages + landing page
+public/              The demo pages + landing page
 ```
 
 ### Dataset credit

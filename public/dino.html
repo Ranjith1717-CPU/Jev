@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jev plays the Dino game</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1C2322;--muted:#7F8886;--line:#E6EAE9;--accent:#149A8E;--duck:#E0A030;--warn:#D9535A}
+body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif;padding:22px 34px;max-width:1240px}
+h1{font-family:"Space Grotesk",sans-serif;font-size:28px}
+h1 span{color:var(--accent)}
+.back{display:inline-block;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:10px}
+.back:hover{color:var(--accent)}
+.sub{margin-top:4px;color:var(--muted);font-size:15px}
+.wrap{margin-top:16px;display:flex;flex-direction:column;gap:14px}
+canvas{display:block;width:100%;max-width:1000px;height:auto;border-radius:16px;background:#fff;box-shadow:0 10px 30px rgba(20,30,28,.12)}
+.ctrl{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button.go{font:inherit;font-size:16px;font-weight:600;border:0;background:var(--accent);color:#fff;padding:12px 26px;border-radius:12px;cursor:pointer}
+button.ghost{font:inherit;font-size:14px;border:1px solid var(--line);background:#fff;padding:10px 16px;border-radius:10px;cursor:pointer}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;max-width:1000px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.stat b{display:block;font-family:"Space Grotesk",sans-serif;font-size:24px;line-height:1.15}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.a b{color:var(--accent)}
+.panels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:1000px}
+.card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-width:0}
+.lbl{font-size:12px;font-weight:600;color:var(--muted);display:flex;justify-content:space-between;gap:10px}
+.lbl span{font-family:"Space Mono",monospace;font-weight:400;font-size:11.5px}
+.seen{margin-top:6px;font-size:15.5px;line-height:1.5;min-height:70px}
+.bars{margin-top:12px;display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:52px 1fr 48px;gap:10px;align-items:center;font-size:15px;font-weight:600}
+.bar .t{height:22px;background:#F0F3F2;border-radius:7px;overflow:hidden}
+.bar .t i{display:block;height:100%;width:0;border-radius:7px;background:#C9D1CF;transition:width .15s ease}
+.bar.win .t i{background:var(--accent)}
+#bDuck.win .t i{background:var(--duck)}
+.bar .v{font-family:"Space Mono",monospace;font-size:13px;text-align:right;color:var(--muted)}
+.bar.win .v{color:var(--accent);font-weight:700}
+#bDuck.win .v{color:var(--duck)}
+.strip{margin-top:12px;display:flex;gap:3px;height:14px;overflow:hidden}
+.strip i{flex:0 0 7px;border-radius:2px;background:#DDE3E2}
+.strip i.j{background:var(--accent)}
+.strip i.d{background:var(--duck)}
+.card pre{margin-top:8px;font-family:"Space Mono",monospace;font-size:11.5px;line-height:1.5;background:#F4F6F5;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-word;color:#4F5A58;height:250px;overflow:auto}
+.card pre b{color:var(--accent)}
+.mode{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.mode button{font:inherit;font-size:14.5px;border:0;background:none;padding:11px 14px;cursor:pointer;color:var(--muted)}
+.mode button.on{background:#F0F3F2;color:var(--ink);font-weight:600}
+.hint{font-size:14px;color:var(--ink)}
+canvas.manual{cursor:pointer}
+.note{font-size:12.5px;color:var(--muted);max-width:1000px;line-height:1.45}
+@media (max-width:900px){body{padding:18px 16px}.stats{grid-template-columns:repeat(3,1fr)}.panels{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<a class="back" href="/">← All demos</a>
+<h1>Jev plays <span>the Dino game.</span></h1>
+<p class="sub" id="subt">Every move is a live Jev decision: jump, duck or keep running. The game only describes what is happening. Jev decides.</p>
+<div class="wrap">
+  <canvas id="c" width="1000" height="260"></canvas>
+  <div class="ctrl"><div class="mode" id="mode"><button data-m="auto" class="on">Jev plays</button><button data-m="manual">You play</button></div><button class="go" id="go">Start</button><button class="ghost" id="stop">Stop</button>
+    <p class="hint" id="hint" style="display:none">Press <b>Space</b> or <b>↑</b> (or click the game) to jump, hold <b>↓</b> to duck. Jev watches and shows what it would do.</p></div>
+  <p class="note">Each answer takes about 0.6 s round trip, so the game keeps several questions in flight at once, each about what the dino will face when the answer lands. Jev reads the game as text, not pixels. Birds start showing up after the first 8 obstacles.</p>
+  <div class="stats">
+    <div class="stat a"><b id="sScore">0</b><span>obstacles cleared</span></div>
+    <div class="stat"><b id="sDist">0</b><span>distance</span></div>
+    <div class="stat"><b id="sDec">0</b><span>decisions</span></div>
+    <div class="stat"><b id="sAvg">–</b><span>per decision</span></div>
+    <div class="stat a"><b id="sCost">$0</b><span>total cost</span></div>
+    <div class="stat"><b id="sModel" style="font-size:18px;padding-top:4px">–</b><span>model</span></div>
+  </div>
+  <div class="panels">
+    <div class="card">
+      <div class="lbl"><span id="seeLbl" style="font-family:inherit;font-weight:600;font-size:12px">What Jev sees</span> <span id="lat"></span></div>
+      <div class="seen" id="seen">Press Start.</div>
+      <div class="bars">
+        <div class="bar" id="bJump"><span>Jump</span><div class="t"><i></i></div><span class="v">–</span></div>
+        <div class="bar" id="bDuck"><span>Duck</span><div class="t"><i></i></div><span class="v">–</span></div>
+        <div class="bar" id="bRun"><span>Run</span><div class="t"><i></i></div><span class="v">–</span></div>
+      </div>
+      <div class="strip" id="strip"></div>
+    </div>
+    <div class="card"><div class="lbl">Request sent <span>POST api.typesafe.ai/v1/systemone</span></div><pre id="req">–</pre></div>
+    <div class="card"><div class="lbl">Response <span id="resm"></span></div><pre id="res">–</pre></div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const cv = $('c'), cx = cv.getContext('2d'), W = cv.width, H = cv.height, GY = H - 34;
+// Physics in 60 fps frame units. Tuned (by simulating latency jitter) so a jump
+// that starts anywhere in the "about to reach" window clears every obstacle.
+const G = 0.38, JUMP = 10, DINO_X = 70, DINO_W = 40, DINO_H = 44, DUCK_W = 55, DUCK_H = 26, PX = 2;
+const SPEED0 = 3.5, SPEED_MAX = 5.5, ACCEL = 0.02 / 60, DUCK_MS = 600;
+const ASK_EVERY = 100, MAX_INFLIGHT = 10, BIRDS_AFTER = 8;
+const TYPES = {
+  small: { w: 17, h: 35, b: 0, name: 'a small cactus' },
+  large: { w: 25, h: 50, b: 0, name: 'a tall cactus' },
+  group: { w: 52, h: 38, b: 0, name: 'a wide group of cacti' },
+  low:   { w: 42, h: 28, b: 6, bird: 1, name: "a bird flying low, at the dino's feet" },
+  mid:   { w: 42, h: 28, b: 34, bird: 1, name: 'a bird flying at head height' },
+  high:  { w: 42, h: 28, b: 62, bird: 1, name: "a bird flying high, above the dino's head" },
+};
+let dino, obs, clouds, pebbles, speed, dist, score, hi = 0, running = false, dead = false, game = 0, mode = 'auto', frame = 0;
+let seq = 0, applied = 0, inflight = 0, decisions = 0, cost = 0, msSum = 0, avgLat = 600, duckHeld = false, askTimer, last = performance.now();
+function reset() {
+  dino = { h: 0, v: 0, duckUntil: 0 }; speed = SPEED0; dist = 0; score = 0; dead = false; frame = 0;
+  seq = 0; applied = 0; inflight = 0; decisions = 0; cost = 0; msSum = 0;
+  obs = []; for (let i = 0; i < 3; i++) obs.push(newObstacle());
+  clouds = [...Array(4)].map((_, i) => ({ x: i * 260 + Math.random() * 120, y: 30 + Math.random() * 70 }));
+  pebbles = [...Array(40)].map(() => ({ x: Math.random() * W, y: GY + 6 + Math.random() * 16, w: 2 + Math.random() * 4 }));
+}
+function newObstacle() {
+  const kinds = score + obs.length >= BIRDS_AFTER ? ['small', 'large', 'group', 'small', 'large', 'low', 'mid', 'high'] : ['small', 'large', 'group'];
+  const k = kinds[Math.floor(Math.random() * kinds.length)];
+  const lastX = obs.length ? obs[obs.length - 1].x : W - 200;
+  return { ...TYPES[k], kind: k, x: lastX + 300 + speed * 40 + Math.random() * 300, passed: false };
+}
+const ducking = () => dino.h === 0 && (duckHeld || performance.now() < dino.duckUntil);
+// Describe what the dino will face when this answer lands (avgLat from now).
+function describe() {
+  const L = (avgLat / 1000) * 60;
+  const land = dino.h > 0 ? (dino.v + Math.sqrt(dino.v * dino.v + 2 * G * dino.h)) / G : 0;
+  const me = land > L ? 'The dino is in the air.' : dino.duckUntil > performance.now() + avgLat ? 'The dino is running, ducked down.' : 'The dino is running on the ground.';
+  const o = obs.find(o => (o.x + o.w - DINO_X) / speed - L > 0);
+  const T = (o.x - (DINO_X + DINO_W)) / speed - L;
+  const where = T > 60 ? 'far ahead' : T > 20 ? 'coming up, still some way off' : T > 1 ? 'about to reach the dino' : 'right at the dino, passing it now';
+  return `${me} The next obstacle is ${o.name}. It is ${where}.`;
+}
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+async function ask() {
+  if (!running || dead || inflight >= MAX_INFLIGHT) return;
+  const my = ++seq, g = game, state = describe(), sent = performance.now(); inflight++;
+  try {
+    const r = await fetch('/api/dino', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state }) }).then(r => r.json());
+    if (r.error) throw new Error(r.error);
+    if (g !== game) return; // answer from a previous game
+    const rtt = performance.now() - sent; decisions++; cost += r.cost; msSum += rtt; avgLat = avgLat * 0.8 + rtt * 0.2;
+    if (my > applied && running && !dead) {
+      applied = my;
+      if (mode === 'auto') act(r.move);
+      show(state, r);
+    }
+    $('sDec').textContent = decisions; $('sAvg').textContent = (msSum / decisions / 1000).toFixed(2) + ' s';
+    $('sCost').textContent = '$' + cost.toFixed(4); $('sModel').textContent = r.model;
+  } catch (e) { if (g === game) $('seen').textContent = e.message; }
+  finally { if (g === game) inflight--; }
+}
+function act(move) {
+  if (dino.h > 0) return;
+  if (move === 'jump') { dino.v = JUMP; dino.duckUntil = 0; }
+  else if (move === 'duck') dino.duckUntil = performance.now() + DUCK_MS;
+}
+function show(state, r) {
+  const pr = r.raw.answers.move.probabilities || {};
+  $('seen').textContent = state; $('lat').textContent = `${(r.ms / 1000).toFixed(2)} s`;
+  [['bJump', 'jump'], ['bDuck', 'duck'], ['bRun', 'run']].forEach(([id, k]) => { const el = $(id), v = pr[k] || 0; el.classList.toggle('win', r.move === k); el.querySelector('i').style.width = Math.round(v * 100) + '%'; el.querySelector('.v').textContent = Math.round(v * 100) + '%'; });
+  const st = $('strip'); st.insertAdjacentHTML('afterbegin', `<i class="${r.move === 'jump' ? 'j' : r.move === 'duck' ? 'd' : ''}"></i>`); while (st.children.length > 80) st.lastChild.remove();
+  const q = r.request.questions.move;
+  $('req').innerHTML = esc(`{\n  "model": "${r.request.model}",\n  "state": "${state}",\n  "questions": {\n    "move": {\n      "type": "${q.type}",\n      "instructions": "${q.instructions}",\n      "criteria": {\n        "jump": "${q.criteria.jump}",\n        "duck": "${q.criteria.duck}",\n        "run": "${q.criteria.run}"\n      }\n    }\n  }\n}`);
+  $('res').innerHTML = esc(JSON.stringify(r.raw, null, 2)).replace(`"choice": "${r.move}"`, m => `<b>${m}</b>`);
+  $('resm').textContent = `${r.model} · ${r.tokens} tokens · $${r.cost.toFixed(6)}`;
+}
+function update(dt) {
+  if (dead) return;
+  frame += dt; speed = Math.min(SPEED_MAX, speed + ACCEL * dt);
+  dist += speed * dt / 10; $('sDist').textContent = Math.floor(dist);
+  if (dino.h > 0 || dino.v > 0) { dino.v -= G * dt; dino.h += dino.v * dt; if (dino.h <= 0) { dino.h = 0; dino.v = 0; } }
+  clouds.forEach(c => { c.x -= speed * 0.2 * dt; if (c.x < -60) { c.x = W + 40 + Math.random() * 100; c.y = 30 + Math.random() * 70; } });
+  pebbles.forEach(p => { p.x -= speed * dt; if (p.x < -6) { p.x = W + Math.random() * 20; p.y = GY + 6 + Math.random() * 16; } });
+  const duck = ducking(), dw = duck ? DUCK_W : DINO_W, dh = duck ? DUCK_H : DINO_H;
+  for (const o of obs) {
+    o.x -= speed * dt;
+    if (!o.passed && o.x + o.w < DINO_X) { o.passed = true; score++; $('sScore').textContent = score; }
+    const hitX = o.x + 4 < DINO_X + dw - 6 && o.x + o.w - 4 > DINO_X + 6;
+    const hitY = dino.h + 3 < o.b + o.h && dino.h + dh - 3 > o.b;
+    if (hitX && hitY) {
+      dead = true; running = false; clearInterval(askTimer); hi = Math.max(hi, Math.floor(dist));
+      $('seen').textContent = mode === 'manual' ? `You hit ${o.name} after ${score} obstacles. Jev gave ${decisions} opinions while watching. Press Start to try again.` : `Hit ${o.name} after ${score} obstacles and ${decisions} decisions. Press Start to play again.`;
+      return;
+    }
+  }
+  if (obs[0].x + obs[0].w < -20) { obs.shift(); obs.push(newObstacle()); }
+}
+// Pixel sprites, 2 px per cell. '#' is filled, 'o' is the eye (left empty).
+const BODY = [
+  '..........########..', '.........##o#######.', '.........##########.', '.........##########.', '.........#####......',
+  '.........########...', '#.......#####.......', '#......######.......', '##....########......', '###..#########.#....',
+  '##############......', '##############......', '.############.......', '..###########.......', '...#########........', '....#######.........'];
+const LEGS = {
+  still: ['....###.###.........', '....##...##.........', '....#.....#.........', '....##....##........'],
+  a: ['....###.###.........', '....##....#.........', '....#...............', '....##..............'],
+  b: ['....###.###.........', '....#.....##........', '..........#.........', '..........##........'],
+};
+const DUCK = [
+  '...................########.', '#.......##########.##o######', '##....#####################.', '##########################..',
+  '######################......', '.###################........', '..##############.##.........', '...############.............'];
+const DUCK_LEGS = { a: ['....###.##..................', '....##....#.................', '....#.......................'], b: ['....###.##..................', '....#.....##................', '..........#.................'] };
+function sprite(rows, x, y, col) {
+  cx.fillStyle = col;
+  rows.forEach((row, r) => { for (let c = 0; c < row.length; c++) if (row[c] === '#') cx.fillRect(x + c * PX, y + r * PX, PX, PX); });
+}
+function drawCactus(x, w, h) {
+  const tw = Math.max(6, Math.round(w * 0.42)), tx = x + (w - tw) / 2, top = GY - h;
+  cx.fillRect(tx, top, tw, h);
+  const aw = Math.max(3, Math.round(tw * 0.55));
+  cx.fillRect(x, top + h * 0.3, aw, h * 0.32); cx.fillRect(x, top + h * 0.55, tx - x + 1, aw);
+  cx.fillRect(x + w - aw, top + h * 0.22, aw, h * 0.3); cx.fillRect(tx + tw - 1, top + h * 0.45, x + w - tx - tw + 1, aw);
+}
+function drawBird(o) {
+  const y = GY - o.b - o.h, x = o.x, up = Math.floor(frame / 12) % 2 === 0;
+  cx.fillRect(x + 2, y + 12, 34, 6); cx.fillRect(x, y + 10, 10, 4); cx.fillRect(x + 36, y + 13, 6, 3);
+  if (up) { cx.beginPath(); cx.moveTo(x + 12, y + 12); cx.lineTo(x + 22, y); cx.lineTo(x + 26, y + 12); cx.fill(); }
+  else { cx.beginPath(); cx.moveTo(x + 12, y + 18); cx.lineTo(x + 22, y + 28); cx.lineTo(x + 26, y + 18); cx.fill(); }
+}
+function draw() {
+  const ink = dead ? '#9AA3A1' : '#535353';
+  cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H);
+  cx.strokeStyle = '#DDE3E2'; cx.lineWidth = 2;
+  clouds.forEach(c => { cx.beginPath(); cx.moveTo(c.x, c.y + 12); cx.lineTo(c.x + 10, c.y + 12); cx.arc(c.x + 18, c.y + 6, 8, Math.PI, 0); cx.arc(c.x + 32, c.y + 8, 6, Math.PI, 0); cx.lineTo(c.x + 46, c.y + 12); cx.stroke(); });
+  cx.fillStyle = '#535353'; cx.fillRect(0, GY, W, 2);
+  pebbles.forEach(p => cx.fillRect(p.x, p.y, p.w, 2));
+  cx.fillStyle = ink;
+  obs.forEach(o => {
+    if (o.kind === 'group') { drawCactus(o.x, 17, 38); drawCactus(o.x + 18, 16, 30); drawCactus(o.x + 35, 17, 36); }
+    else if (o.bird) drawBird(o);
+    else drawCactus(o.x, o.w, o.h);
+  });
+  const step = Math.floor(frame / 6) % 2 ? 'a' : 'b';
+  if (ducking()) {
+    const y = GY - (DUCK.length + 3) * PX;
+    sprite(DUCK, DINO_X, y, ink); sprite(DUCK_LEGS[step], DINO_X, y + DUCK.length * PX, ink);
+  } else {
+    const y = GY - dino.h - (BODY.length + 4) * PX;
+    sprite(BODY, DINO_X, y, ink); sprite(dino.h > 0 || !running ? LEGS.still : LEGS[step], DINO_X, y + BODY.length * PX, ink);
+    if (dead) { cx.fillStyle = ink; cx.fillRect(DINO_X + 22, y + 2, 2, 2); cx.fillRect(DINO_X + 26, y + 2, 2, 2); cx.fillRect(DINO_X + 24, y + 4, 2, 2); }
+  }
+  cx.font = '700 18px "Space Mono", monospace'; cx.textAlign = 'right'; cx.fillStyle = '#737373';
+  cx.fillText((hi ? `HI ${String(hi).padStart(5, '0')}   ` : '') + String(Math.floor(dist)).padStart(5, '0'), W - 24, 34);
+  cx.textAlign = 'center';
+  if (dead) { cx.fillStyle = '#535353'; cx.font = '700 22px "Space Mono", monospace'; cx.fillText('G A M E   O V E R', W / 2, H / 2 - 20); }
+  else if (!running && decisions === 0 && dist === 0) { cx.fillStyle = '#535353'; cx.font = '700 22px "Space Grotesk", sans-serif'; cx.fillText('Press Start', W / 2, H / 2 - 20); }
+}
+function loop(now) {
+  const dt = Math.min(2.5, (now - last) / (1000 / 60)); last = now;
+  if (running) update(dt);
+  draw(); requestAnimationFrame(loop);
+}
+// measure the real round trip (and wake the server) before the game starts
+async function warm() {
+  const t = performance.now();
+  try { await fetch('/api/dino', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: 'The dino is running on the ground. The next obstacle is a small cactus. It is far ahead.' }), signal: AbortSignal.timeout(3000) }).then(r => r.json()); avgLat = performance.now() - t; } catch (e) {}
+}
+warm();
+$('go').onclick = async () => {
+  $('go').disabled = true; $('seen').textContent = 'Checking how long a round trip to Jev takes…';
+  await warm(); await warm(); $('go').disabled = false;
+  game++; reset(); ['sScore', 'sDec', 'sDist'].forEach(id => $(id).textContent = 0); $('sCost').textContent = '$0'; $('sAvg').textContent = '–'; $('strip').innerHTML = '';
+  running = true; clearInterval(askTimer); askTimer = setInterval(ask, ASK_EVERY); ask();
+};
+$('stop').onclick = () => { running = false; clearInterval(askTimer); };
+document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#mode button').forEach(x => x.classList.toggle('on', x === b)); mode = b.dataset.m;
+  $('hint').style.display = mode === 'manual' ? '' : 'none'; cv.classList.toggle('manual', mode === 'manual');
+  $('seeLbl').textContent = mode === 'manual' ? 'What Jev would do' : 'What Jev sees';
+  $('subt').textContent = mode === 'manual' ? 'You run the dino. Jev watches every moment and shows what it would do: jump, duck or keep running.' : 'Every move is a live Jev decision: jump, duck or keep running. The game only describes what is happening. Jev decides.';
+});
+function humanJump() { if (mode !== 'manual') return; if (!running && !dead && decisions === 0) { $('go').click(); } if (running && !dead && dino.h === 0) { dino.v = JUMP; duckHeld = false; } }
+document.addEventListener('keydown', e => {
+  if (mode !== 'manual') return;
+  if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); humanJump(); }
+  if (e.code === 'ArrowDown') { e.preventDefault(); duckHeld = true; }
+});
+document.addEventListener('keyup', e => { if (e.code === 'ArrowDown') duckHeld = false; });
+cv.addEventListener('mousedown', humanJump);
+reset(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

@@ -22,7 +22,7 @@ const SAMPLE_INBOX = JSON.parse(
 app.get('/data/inbox.json', (req, res) => res.json(SAMPLE_INBOX));
 
 // Extensionless aliases, e.g. /send instead of /send.html.
-['send', 'paste', 'flappy', 'mail', 'coach'].forEach((page) => {
+['send', 'paste', 'flappy', 'dino', 'mail', 'coach'].forEach((page) => {
   app.get(`/${page}`, (req, res) => res.sendFile(path.join(__dirname, 'public', `${page}.html`)));
 });
 
@@ -181,6 +181,34 @@ app.post('/api/flappy', async (req, res) => {
       criteria: {
         flap: 'Flap now to gain height and stay in or reach the gap',
         wait: 'Do nothing and let gravity pull the bird down slightly',
+      },
+    },
+  };
+
+  try {
+    const result = await askWith(req)({ state, questions });
+    const move = result.raw.answers.move.choice;
+    res.json({ ...result, move });
+  } catch (err) {
+    sendJevError(res, err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// /dino — Jev plays the Chrome dino game. Each call: jump, duck or keep running.
+// ---------------------------------------------------------------------------
+app.post('/api/dino', async (req, res) => {
+  const state = (req.body?.state || '').toString().slice(0, 500);
+  if (!state) return res.status(400).json({ error: 'Missing game state.' });
+
+  const questions = {
+    move: {
+      type: 'choice',
+      instructions: 'You are playing the Chrome dinosaur game. Based on what is in front of the dino and how close it is, should the dino jump, duck, or keep running?',
+      criteria: {
+        jump: 'Jump now: a cactus or a low-flying bird is about to reach the dino (jumping while it is still coming up lands too early)',
+        duck: 'Duck now to pass under a bird flying at head height that is about to reach or is at the dino',
+        run: 'Keep running: the obstacle is still far ahead or only coming up (still some way off), the bird is flying high enough to pass overhead, or the dino is already in the air',
       },
     },
   };
