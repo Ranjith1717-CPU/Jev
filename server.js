@@ -6,6 +6,7 @@ const fs = require('fs');
 const express = require('express');
 const { askJev, JevError } = require('./lib/jev');
 const { askClaude, CLAUDE_MODEL } = require('./lib/claude');
+const { askGemini, GEMINI_MODEL } = require('./lib/gemini');
 const gmail = require('./lib/gmail');
 
 const app = express();
@@ -28,19 +29,27 @@ app.get('/data/inbox.json', (req, res) => res.json(SAMPLE_INBOX));
 
 // Tell the client whether the server has a key configured, without ever
 // exposing the key itself. Pages use this to show a friendly setup banner.
+// The comparison lane races Jev against Gemini 3.5 Flash-Lite when
+// GEMINI_API_KEY is set, otherwise against Claude Haiku 4.5.
+const RIVAL = process.env.GEMINI_API_KEY
+  ? { ask: askGemini, name: 'Gemini 3.5 Flash-Lite', short: 'Gemini', model: GEMINI_MODEL, keyVar: 'GEMINI_API_KEY', endpoint: `generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent` }
+  : { ask: askClaude, name: 'Claude Haiku 4.5', short: 'Claude', model: CLAUDE_MODEL, keyVar: 'ANTHROPIC_API_KEY', endpoint: 'api.anthropic.com/v1/messages' };
+
 app.get('/api/health', (req, res) => {
+  const { ask, ...rival } = RIVAL;
   res.json({
     ok: true,
     jevConfigured: Boolean(process.env.TYPESAFE_API_KEY),
-    claudeConfigured: Boolean(process.env.ANTHROPIC_API_KEY),
-    claudeModel: CLAUDE_MODEL,
+    rivalConfigured: Boolean(process.env[RIVAL.keyVar]),
+    rival,
   });
 });
 
 // Every /api route takes an optional { engine: 'claude' } to answer the same
-// questions with Claude Haiku instead of Jev, for side-by-side comparison.
+// questions with the comparison model (RIVAL) instead of Jev. The wire value
+// stays 'claude' for backwards compatibility; it means "the rival lane".
 const isClaude = (req) => req.body?.engine === 'claude';
-const askWith = (req) => (isClaude(req) ? askClaude : askJev);
+const askWith = (req) => (isClaude(req) ? RIVAL.ask : askJev);
 
 function sendJevError(res, err) {
   console.error('[jev]', err.message);
@@ -252,8 +261,8 @@ const MAIL_QUESTIONS = {
 };
 
 const MAX_CONCURRENCY = 8;
-// Claude runs fewer requests at once and at most 100 emails per run, to stay
-// inside new-account rate limits (and because each call costs ~25x more).
+// The rival runs fewer requests at once and at most 100 emails per run, to
+// stay inside new-account rate limits (and because each call costs more).
 const CLAUDE_CONCURRENCY = 4;
 const CLAUDE_MAX_EMAILS = 100;
 

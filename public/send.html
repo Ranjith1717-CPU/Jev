@@ -68,7 +68,7 @@ pre{font-family:var(--mono);font-size:14px;line-height:1.6;color:#5B6664;backgro
     <textarea id="t" maxlength="300" placeholder="My biryani came cold and 40 minutes late…"></textarea>
     <button class="send" id="go">Send</button>
   </div>
-  <label class="cmp"><input type="checkbox" id="cmp" checked> Also ask Claude Haiku 4.5 (same questions) <small id="cmpNote"></small></label>
+  <label class="cmp" data-rv-t=" Also ask {name} (same questions) "><input type="checkbox" id="cmp" checked> Also ask Gemini 3.5 Flash-Lite (same questions) <small id="cmpNote"></small></label>
   <div class="err" id="err"></div>
 
   <div class="out" id="out">
@@ -81,8 +81,8 @@ pre{font-family:var(--mono);font-size:14px;line-height:1.6;color:#5B6664;backgro
       <div><div class="lbl">Response from Jev <span id="rsm"></span></div><pre id="res"></pre></div>
     </div>
     <div class="raw" id="craw" style="display:none">
-      <div><div class="lbl">Request sent to Claude <span>POST /v1/messages</span></div><pre id="creq"></pre></div>
-      <div><div class="lbl">Response from Claude <span id="crsm"></span></div><pre id="cres"></pre></div>
+      <div><div class="lbl" data-rv-t="Request sent to {short} ">Request sent to Gemini <span id="crqm">POST</span></div><pre id="creq"></pre></div>
+      <div><div class="lbl" data-rv-t="Response from {short} ">Response from Gemini <span id="crsm"></span></div><pre id="cres"></pre></div>
     </div>
     <div class="lbl">What it means</div>
     <div class="res" id="resBox">
@@ -122,13 +122,23 @@ function read(k, a) {
   if (a.type === 'choice') return [nice(a.choice), a.probabilities ? a.probabilities[a.choice] : null];
   const l = Math.round(a.score); return [(LV[k] || [])[l] || 'Level ' + l, a.probabilities ? a.probabilities[String(l)] : null];
 }
+// The comparison model (Gemini or Claude); /api/health says which.
+const RV = { name: 'Gemini 3.5 Flash-Lite', short: 'Gemini', model: 'gemini-3.5-flash-lite', endpoint: '', keyVar: 'GEMINI_API_KEY' };
+// [data-rv] elements show one RV field; [data-rv-t] rewrite their own text from a {field} template.
+const fillRv = () => {
+  document.querySelectorAll('[data-rv]').forEach(el => el.textContent = RV[el.dataset.rv]);
+  document.querySelectorAll('[data-rv-t]').forEach(el => {
+    const t = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim());
+    if (t) t.nodeValue = el.dataset.rvT.replace(/\{(\w+)\}/g, (_, k) => RV[k]);
+  });
+};
 let claudeReady = false;
 fetch('/api/health').then(r => r.json()).then(h => {
-  claudeReady = !!h.claudeConfigured; $('cmp').disabled = !claudeReady;
-  if (!claudeReady) { $('cmp').checked = false; $('cmpNote').textContent = '(add ANTHROPIC_API_KEY to .env and restart to enable)'; }
+  Object.assign(RV, h.rival); fillRv(); $('crqm').textContent = 'POST …/' + RV.endpoint.split('/').pop(); claudeReady = !!h.rivalConfigured; $('cmp').disabled = !claudeReady;
+  if (!claudeReady) { $('cmp').checked = false; $('cmpNote').textContent = `(add ${RV.keyVar} to .env and restart to enable)`; }
 }).catch(() => {});
 const ask = (text, engine) => fetch('/api/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text, engine }) })
-  .then(async r => { const j = await r.json(); if (!r.ok) throw new Error((engine === 'claude' ? 'Claude: ' : '') + j.error); return j; });
+  .then(async r => { const j = await r.json(); if (!r.ok) throw new Error((engine === 'claude' ? RV.short + ': ' : '') + j.error); return j; });
 $('go').onclick = async () => {
   const text = $('t').value.trim(); if (!text) return;
   $('go').disabled = true; $('go').textContent = '…'; $('err').textContent = '';
@@ -155,15 +165,15 @@ $('go').onclick = async () => {
       return `<div class="row"><span class="q">${NAMES[k]}</span><span class="a">${v}</span><span class="p">${pct}</span><span class="c">${cv}</span><span class="d">${cv === v ? '' : '≠'}</span></div>`;
     });
     if (cOk) {
-      rows.unshift('<div class="row head"><span>Question</span><span>Jev</span><span></span><span>Claude Haiku</span><span></span></div>');
+      rows.unshift('<div class="row head"><span>Question</span><span>Jev</span><span></span><span>' + RV.short + '</span><span></span></div>');
       $('creq').textContent = JSON.stringify(c.request, null, 2);
       $('cres').textContent = JSON.stringify(c.raw, null, 2);
       $('crsm').textContent = `${c.model} · ${(c.ms / 1000).toFixed(2)} s · $${c.cost.toFixed(5)}`;
       const cl = LANE[c.route.lane];
       $('sj').textContent = `Jev · ${(j.ms / 1000).toFixed(2)} s · $${j.cost.toFixed(6)}`;
       $('sjd').textContent = `Route: ${LANE[j.route.lane]}`;
-      $('sc').textContent = `Claude Haiku · ${(c.ms / 1000).toFixed(2)} s · $${c.cost.toFixed(6)}`;
-      $('scd').textContent = `Route: ${cl} · agreed on ${agree} of ${Object.keys(NAMES).length} answers · Jev ${(c.ms / j.ms).toFixed(1)}× faster, ${Math.round(c.cost / j.cost)}× cheaper`;
+      $('sc').textContent = `${RV.name} · ${(c.ms / 1000).toFixed(2)} s · $${c.cost.toFixed(6)}`;
+      $('scd').textContent = `Route: ${cl} · agreed on ${agree} of ${Object.keys(NAMES).length} answers · Jev ${c.ms >= j.ms ? (c.ms / j.ms).toFixed(1) + '× faster' : (j.ms / c.ms).toFixed(1) + '× slower'}, ${c.cost >= j.cost ? Math.round(c.cost / j.cost) + '× cheaper' : (j.cost / c.cost).toFixed(1) + '× pricier'}`;
     }
     $('rows').innerHTML = rows.join('');
     $('out').style.display = 'block';

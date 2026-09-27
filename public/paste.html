@@ -90,7 +90,7 @@ IIT Bombay, B.Tech in Computer Science, 2017</div>
     <p class="hint">Click a field and press <span class="key">⌘V</span></p>
   </div>
   <div class="card side">
-    <label class="cmp"><input type="checkbox" id="cmp" checked> Also ask Claude Haiku 4.5 <small id="cmpNote"></small></label>
+    <label class="cmp" data-rv-t=" Also ask {name} "><input type="checkbox" id="cmp" checked> Also ask Gemini 3.5 Flash-Lite <small id="cmpNote"></small></label>
     <div class="stats">
       <div><b id="st-model">–</b>model</div>
       <div class="a"><b id="st-last">–</b>last pick</div>
@@ -98,8 +98,8 @@ IIT Bombay, B.Tech in Computer Science, 2017</div>
       <div class="a"><b id="st-cost">$0</b>total cost</div>
     </div>
     <div class="stats" id="cstats" style="display:none">
-      <div class="c"><b id="cst-last">–</b>Claude last pick</div>
-      <div class="c"><b id="cst-cost">$0</b>Claude total cost</div>
+      <div class="c" data-rv-t="{short} last pick"><b id="cst-last">–</b>Gemini last pick</div>
+      <div class="c" data-rv-t="{short} total cost"><b id="cst-cost">$0</b>Gemini total cost</div>
       <div><b id="cst-agree">–</b>same pick as Jev</div>
     </div>
     <div id="detail"><div class="empty">Paste into any field to see the exact request sent to Jev and its raw response.</div></div>
@@ -120,10 +120,20 @@ function snippets(text) {
   });
   return [...new Set(out)];
 }
+// The comparison model (Gemini or Claude); /api/health says which.
+const RV = { name: 'Gemini 3.5 Flash-Lite', short: 'Gemini', model: 'gemini-3.5-flash-lite', endpoint: '', keyVar: 'GEMINI_API_KEY' };
+// [data-rv] elements show one RV field; [data-rv-t] rewrite their own text from a {field} template.
+const fillRv = () => {
+  document.querySelectorAll('[data-rv]').forEach(el => el.textContent = RV[el.dataset.rv]);
+  document.querySelectorAll('[data-rv-t]').forEach(el => {
+    const t = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim());
+    if (t) t.nodeValue = el.dataset.rvT.replace(/\{(\w+)\}/g, (_, k) => RV[k]);
+  });
+};
 let claudeReady = false, cN = 0, cAgree = 0, cCost = 0;
 fetch('/api/health').then(r => r.json()).then(h => {
-  claudeReady = !!h.claudeConfigured; document.getElementById('cmp').disabled = !claudeReady;
-  if (!claudeReady) { document.getElementById('cmp').checked = false; document.getElementById('cmpNote').textContent = '(needs ANTHROPIC_API_KEY)'; }
+  Object.assign(RV, h.rival); fillRv(); claudeReady = !!h.rivalConfigured; document.getElementById('cmp').disabled = !claudeReady;
+  if (!claudeReady) { document.getElementById('cmp').checked = false; document.getElementById('cmpNote').textContent = `(needs ${RV.keyVar})`; }
 }).catch(() => {});
 const pick = (field, list, engine) => fetch('/api/paste', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ field, snippets: list, engine }) })
   .then(r => r.json()).then(r => { if (r.error) throw new Error(r.error); return r; });
@@ -136,7 +146,7 @@ document.querySelectorAll('[data-field]').forEach(el => {
     tag.textContent = 'Jev is picking…'; ctag.textContent = '';
     const list = snippets(text), two = claudeReady && document.getElementById('cmp').checked;
     const cp = two ? pick(el.dataset.field, list, 'claude').catch(e => ({ error: e.message })) : null;
-    if (cp) ctag.textContent = 'Claude Haiku is picking…';
+    if (cp) ctag.textContent = RV.short + ' is picking…';
     try {
       const r = await pick(el.dataset.field, list, 'jev');
       el.value = r.text;
@@ -154,17 +164,17 @@ document.querySelectorAll('[data-field]').forEach(el => {
       box.classList.add('flash'); setTimeout(() => box.classList.remove('flash'), 700);
       if (cp) {
         const c = await cp;
-        if (c.error) { ctag.textContent = 'Claude: ' + c.error; return; }
+        if (c.error) { ctag.textContent = RV.short + ': ' + c.error; return; }
         const same = c.text === r.text;
         cN++; if (same) cAgree++; cCost += c.cost || 0;
-        ctag.textContent = `Claude Haiku took ${(c.ms / 1000).toFixed(2)} s: ${same ? 'same pick' : 'picked "' + (c.text || 'nothing') + '"'}`;
+        ctag.textContent = `${RV.short} took ${(c.ms / 1000).toFixed(2)} s: ${same ? 'same pick' : 'picked "' + (c.text || 'nothing') + '"'}`;
         document.getElementById('cstats').style.display = '';
         document.getElementById('cst-last').textContent = (c.ms / 1000).toFixed(2) + ' s';
         document.getElementById('cst-cost').textContent = '$' + cCost.toFixed(5);
         document.getElementById('cst-agree').textContent = `${cAgree} / ${cN}`;
         document.getElementById('detail').insertAdjacentHTML('beforeend', `
-          <h4 style="color:var(--c)">Claude Haiku 4.5 <span>POST api.anthropic.com/v1/messages</span></h4><pre>${esc(JSON.stringify(c.request, null, 2))}</pre>
-          <h4>Claude raw response <span>${esc(c.model)} · ${(c.ms / 1000).toFixed(2)} s · ${c.tokens} tokens · $${c.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify(c.raw, null, 2))}</pre>`);
+          <h4 style="color:var(--c)">${RV.name} <span>POST ${RV.endpoint}</span></h4><pre>${esc(JSON.stringify(c.request, null, 2))}</pre>
+          <h4>${RV.short} raw response <span>${esc(c.model)} · ${(c.ms / 1000).toFixed(2)} s · ${c.tokens} tokens · $${c.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify(c.raw, null, 2))}</pre>`);
       }
     } catch (e) { tag.textContent = e.message; }
   });

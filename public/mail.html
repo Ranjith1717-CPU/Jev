@@ -121,7 +121,7 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
 
 <div class="bar">
   <button class="go" id="go">Start</button><button class="ghost" id="stop">Stop</button>
-  <label class="cmp"><input type="checkbox" id="cmp" checked> Race against Claude Haiku 4.5 <small id="cmpNote"></small></label>
+  <label class="cmp" data-rv-t=" Race against {name} "><input type="checkbox" id="cmp" checked> Race against Gemini 3.5 Flash-Lite <small id="cmpNote"></small></label>
 </div>
 
 <div class="lanes">
@@ -137,7 +137,7 @@ button.ghost{font:inherit;font-size:14px;border:0;background:none;color:var(--mu
     </div>
   </div>
   <div class="lane claude" id="claneBox">
-    <div class="top"><span class="name">Claude Haiku 4.5</span><span class="model" id="cm">claude-haiku-4-5</span></div>
+    <div class="top"><span class="name" data-rv="name">Gemini 3.5 Flash-Lite</span><span class="model" id="cm" data-rv="model">gemini-3.5-flash-lite</span></div>
     <div class="clock" id="ct">0.0<small>s</small></div>
     <div class="prog"><i id="cp"></i></div>
     <div class="count" id="cn"><b>0</b> / 25 emails</div>
@@ -164,7 +164,17 @@ const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const fmt = s => s < 60 ? s.toFixed(1) + '<small>s</small>' : Math.floor(s / 60) + '<small>m</small> ' + String(Math.floor(s % 60)).padStart(2, '0') + '<small>s</small>';
 const label = x => x ? (x.spam ? 'Spam' : 'Not spam') : '…';
 
-const CLAUDE_MAX = 100; // server caps Claude runs at 100 emails (rate limits + cost)
+// The comparison model (Gemini or Claude); /api/health says which.
+const RV = { name: 'Gemini 3.5 Flash-Lite', short: 'Gemini', model: 'gemini-3.5-flash-lite', endpoint: '', keyVar: 'GEMINI_API_KEY' };
+// [data-rv] elements show one RV field; [data-rv-t] rewrite their own text from a {field} template.
+const fillRv = () => {
+  document.querySelectorAll('[data-rv]').forEach(el => el.textContent = RV[el.dataset.rv]);
+  document.querySelectorAll('[data-rv-t]').forEach(el => {
+    const t = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim());
+    if (t) t.nodeValue = el.dataset.rvT.replace(/\{(\w+)\}/g, (_, k) => RV[k]);
+  });
+};
+const CLAUDE_MAX = 100; // server caps rival runs at 100 emails (rate limits + cost)
 let source = 'sample', N = 25, runId = 0, res = { jev: {}, claude: {} }, ctrls = [], tick = null, filt = 'all';
 let claudeReady = false;
 let SAMPLE = [], gmailItems = [], gmailConnected = false, gmailConfigured = false;
@@ -242,14 +252,14 @@ function setCompareUi() {
   $('claneBox').style.display = on ? '' : 'none';
   $('fdiff').style.display = on ? '' : 'none';
   $('feedBox').classList.toggle('two', on);
-  $('fh').innerHTML = '<span>Email subject</span><span>From</span><span>Jev says</span>' + (on ? '<span>Claude says</span>' : '');
+  $('fh').innerHTML = '<span>Email subject</span><span>From</span><span>Jev says</span>' + (on ? `<span>${RV.short} says</span>` : '');
 }
 $('cmp').onchange = () => { setCompareUi(); resetLanes(); };
 
 fetch('/api/health').then(r => r.json()).then(h => {
-  claudeReady = !!h.claudeConfigured;
+  Object.assign(RV, h.rival); fillRv(); claudeReady = !!h.rivalConfigured;
   $('cmp').disabled = !claudeReady;
-  $('cmpNote').textContent = claudeReady ? '' : '(add ANTHROPIC_API_KEY to .env and restart to enable)';
+  $('cmpNote').textContent = claudeReady ? '' : `(add ${RV.keyVar} to .env and restart to enable)`;
   setCompareUi(); resetLanes();
 }).catch(() => {});
 
@@ -280,13 +290,13 @@ function paint(p, done, n, cost) {
 }
 function resetLanes() {
   for (const p of ['j', 'c']) { paint(p, 0, laneN(p), 0); $(p + 't').innerHTML = fmt(0); }
-  $('ccap').textContent = N > CLAUDE_MAX ? `Claude runs the first ${CLAUDE_MAX} only (rate limits + cost)` : '';
+  $('ccap').textContent = N > CLAUDE_MAX ? `${RV.short} runs the first ${CLAUDE_MAX} only (rate limits + cost)` : '';
 }
 
 // Streams one engine's results into its lane. Resolves with that lane's stats.
 async function runLane(engine, n, byId, lane, my) {
   const p = engine === 'claude' ? 'c' : 'j';
-  const who = engine === 'claude' ? 'Claude: ' : 'Jev: ';
+  const who = engine === 'claude' ? RV.short + ': ' : 'Jev: ';
   const st = { done: 0, cost: 0, msSum: 0, secs: 0, errors: 0 };
   const ctrl = new AbortController(); ctrls.push(ctrl);
   const url = source === 'gmail' ? '/api/mail/gmail/run' : '/api/mail/run';
@@ -353,10 +363,10 @@ $('go').onclick = async () => {
     const shared = Object.keys(res.claude).filter(id => res.jev[id]);
     const agree = shared.filter(id => verdict(res.jev[id]) === verdict(res.claude[id])).length;
     html += `<div class="vs">
-      <b>Speed per email:</b> Jev ${avg(js).toFixed(2)} s vs Claude Haiku ${avg(cs).toFixed(2)} s, so Jev is ${avg(cs) >= avg(js) ? x(avg(cs), avg(js)) + ' faster' : x(avg(js), avg(cs)) + ' slower'}<br>
-      <b>Cost per email:</b> Jev $${per(js).toFixed(6)} vs Claude Haiku $${per(cs).toFixed(6)}, so Jev is ${per(cs) >= per(js) ? x(per(cs), per(js)) + ' cheaper' : x(per(js), per(cs)) + ' pricier'}<br>
+      <b>Speed per email:</b> Jev ${avg(js).toFixed(2)} s vs ${RV.short} ${avg(cs).toFixed(2)} s, so Jev is ${avg(cs) >= avg(js) ? x(avg(cs), avg(js)) + ' faster' : x(avg(js), avg(cs)) + ' slower'}<br>
+      <b>Cost per email:</b> Jev $${per(js).toFixed(6)} vs ${RV.short} $${per(cs).toFixed(6)}, so Jev is ${per(cs) >= per(js) ? x(per(cs), per(js)) + ' cheaper' : x(per(js), per(cs)) + ' pricier'}<br>
       <b>Agreement:</b> same label (category or spam) on ${agree} of ${shared.length} emails (${Math.round(100 * agree / (shared.length || 1))}%)${shared.length - agree ? '. Pick <i>Only disagreements</i> to see the rest.' : '.'}
-      ${cs.errors ? `<br><b>Claude errors:</b> ${cs.errors} emails failed (see the banner)` : ''}
+      ${cs.errors ? `<br><b>${RV.short} errors:</b> ${cs.errors} emails failed (see the banner)` : ''}
     </div>`;
   }
   $('result').innerHTML = html;
@@ -377,7 +387,7 @@ document.addEventListener('click', ev => {
     <h4>Raw response <span>${esc(r.model)}</span></h4><pre>${esc(JSON.stringify(r.raw, null, 2))}</pre>` : '';
   $('dbody').innerHTML = `<div class="ttl">${esc(subject)}</div>` +
     block('Jev', 'var(--j)', j, 'POST api.typesafe.ai/v1/systemone') +
-    block('Claude Haiku 4.5', 'var(--c)', c, 'POST api.anthropic.com/v1/messages');
+    block(RV.name, 'var(--c)', c, 'POST ' + RV.endpoint);
   $('drawer').classList.add('open');
 });
 </script>

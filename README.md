@@ -9,7 +9,9 @@ Four small apps showing what [TypeSafe's Jev](https://docs.typesafe.ai) (a "Syst
 - **`/mail`** — Jev sorts an inbox live: 1,000 real emails randomly sampled from the [Enron email corpus](https://huggingface.co/datasets/LLM-PBE/enron-email) (category, priority, spam, reply-needed) — or your own Gmail (read-only, subject-lines-only).
 - **`/coach`**: Jev reads coaching-session write-ups and makes four calls (is anyone's sense of value eroding, is the leader out of bandwidth, too many commitments, is someone drifting) plus the coach's next move, then triages sessions into *Act now / Coach watch / On track*. Ships with 12 fictional sessions; can also run on your own BIG Intelligence export, locally (see below).
 
-**Compare with Claude (optional):** add `ANTHROPIC_API_KEY` to `.env` and `/mail`, `/send` and `/paste` get a "race against Claude Haiku 4.5" toggle. Claude answers the exact same typed questions (via structured outputs), side by side with Jev, and each page shows speed, cost and where the two disagree. Claude Haiku 4.5 costs $1 / $5 per million input / output tokens, roughly 25–30× Jev per email. The Claude lane on `/mail` runs at most 100 emails, 4 at a time. `/flappy` and `/dino` stay Jev-only, since they need a decision every 0.1–0.14 s.
+**Compare with Gemini (optional):** add `GEMINI_API_KEY` to `.env` (get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)) and `/mail`, `/send`, `/paste` and `/coach` get a "race against Gemini 3.5 Flash-Lite" toggle. Gemini answers the exact same typed questions (via structured output), side by side with Jev, and each page shows speed, cost and where the two disagree. Gemini 3.5 Flash-Lite costs $0.30 / $2.50 per million input / output tokens, roughly 7–9× Jev per call. The Gemini lane on `/mail` runs at most 100 emails, 4 at a time; on a free-tier key Google allows only about 20 requests a minute, so a 100-email race waits on rate limits (the client retries after the delay Google asks for). `/flappy` and `/dino` stay Jev-only, since they need a decision every 0.1–0.14 s.
+
+If `GEMINI_API_KEY` is not set but `ANTHROPIC_API_KEY` is, the same toggle races Claude Haiku 4.5 instead ($1 / $5 per million tokens).
 
 ## Setup
 
@@ -69,7 +71,8 @@ The OAuth token is stored locally in `.gmail-token.json` (gitignored, single-use
 server.js          Express app: static pages + /api/* routes
 lib/jev.js          Jev API client (fetch wrapper, cost calc)
 lib/gmail.js         Gmail OAuth + metadata-only client
-lib/claude.js        Claude Haiku 4.5 client that answers Jev-style questions (comparison mode)
+lib/gemini.js        Gemini 3.5 Flash-Lite client that answers Jev-style questions (comparison mode)
+lib/claude.js        Claude Haiku 4.5 client, the fallback comparison when no Gemini key is set
 data/enron-inbox.json    1,000 real Enron emails for /mail
 scripts/fetch-enron.js   Rebuilds data/enron-inbox.json from Hugging Face
 data/coaching-sample.json       12 fictional coaching sessions for /coach
@@ -99,7 +102,7 @@ This reads every `*coach-dump.core.json` in the export (nested zips are fine) an
 | Too many commitments | more than 3 actions set in the session |
 | Someone drifting | anyone in the room below the Healthy band |
 
-Restart the server and `/coach` shows a **Your engagements (local only)** option. Note that the anonymised text is sent to the Jev API (and to Claude if the comparison is on) for classification. Anonymisation is name-based, so places and vendor names remain.
+Restart the server and `/coach` shows a **Your engagements (local only)** option. Note that the anonymised text is sent to the Jev API (and to Gemini or Claude if the comparison is on) for classification. Anonymisation is name-based, so places and vendor names remain.
 
 ## Deploying
 

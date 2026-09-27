@@ -115,7 +115,7 @@ h3.sec span{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
 
 <div class="bar">
   <button class="go" id="go">Start</button><button class="ghost" id="stop">Stop</button>
-  <label class="cmp"><input type="checkbox" id="cmp"> Race against Claude Haiku 4.5 <small id="cmpNote"></small></label>
+  <label class="cmp" data-rv-t=" Race against {name} "><input type="checkbox" id="cmp"> Race against Gemini 3.5 Flash-Lite <small id="cmpNote"></small></label>
 </div>
 
 <div class="lanes">
@@ -127,7 +127,7 @@ h3.sec span{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
     <div class="nums"><div><b id="jc">$0</b><span>cost</span></div><div><b id="jl">–</b><span>per session</span></div></div>
   </div>
   <div class="lane claude" id="claneBox" style="display:none">
-    <div class="top"><span class="name">Claude Haiku 4.5</span><span class="model" id="cm">claude-haiku-4-5</span></div>
+    <div class="top"><span class="name" data-rv="name">Gemini 3.5 Flash-Lite</span><span class="model" id="cm" data-rv="model">gemini-3.5-flash-lite</span></div>
     <div class="clock" id="ct">0.0<small>s</small></div>
     <div class="prog"><i id="cp"></i></div>
     <div class="count" id="cn"><b>0</b> / 0 sessions</div>
@@ -152,6 +152,16 @@ h3.sec span{font-weight:400;color:var(--muted);font-size:14px;margin-left:6px}
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
 const fmt = s => s < 60 ? s.toFixed(1) + '<small>s</small>' : Math.floor(s / 60) + '<small>m</small> ' + String(Math.floor(s % 60)).padStart(2, '0') + '<small>s</small>';
+// The comparison model (Gemini or Claude); /api/health says which.
+const RV = { name: 'Gemini 3.5 Flash-Lite', short: 'Gemini', model: 'gemini-3.5-flash-lite', endpoint: '', keyVar: 'GEMINI_API_KEY' };
+// [data-rv] elements show one RV field; [data-rv-t] rewrite their own text from a {field} template.
+const fillRv = () => {
+  document.querySelectorAll('[data-rv]').forEach(el => el.textContent = RV[el.dataset.rv]);
+  document.querySelectorAll('[data-rv-t]').forEach(el => {
+    const t = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim());
+    if (t) t.nodeValue = el.dataset.rvT.replace(/\{(\w+)\}/g, (_, k) => RV[k]);
+  });
+};
 const CLAUDE_MAX = 100;
 const Q = [
   ['erosion', 'Value eroding', 'belief in the coaching or rapport cooling'],
@@ -177,7 +187,7 @@ function sizes() {
 function applySource() {
   $('srcNote').innerHTML = source === 'sample'
     ? 'Twelve <b>fictional</b> sessions written to cover each pattern (a CFO questioning value inside an upbeat review, a founder covering two open roles, a COO asking to skip). Each has an expected answer to check Jev against.'
-    : `<b>${counts.private} anonymised sessions from your own engagements</b>, built locally by <code>scripts/build-coaching-data.js</code> and never committed. Jev only sees the write-up text; its calls are checked against BIG Intelligence's per-person scorecards. Note that the text is sent to the Jev API${compareOn() ? ' and Claude' : ''} to be classified.`;
+    : `<b>${counts.private} anonymised sessions from your own engagements</b>, built locally by <code>scripts/build-coaching-data.js</code> and never committed. Jev only sees the write-up text; its calls are checked against BIG Intelligence's per-person scorecards. Note that the text is sent to the Jev API${compareOn() ? ' and ' + RV.short : ''} to be classified.`;
   $('truthLbl').textContent = source === 'sample' ? 'checked against each sample\'s expected answer' : 'checked against BIG Intelligence\'s own scorecards for the same session';
   fetch('/data/coaching.json?source=' + source).then(r => r.json()).then(d => {
     SESS = d; byId = Object.fromEntries(d.map(s => [s.id, s])); reset();
@@ -190,8 +200,8 @@ fetch('/api/coach/sources').then(r => r.json()).then(s => {
   N = s.sample; sizes(); applySource();
 });
 fetch('/api/health').then(r => r.json()).then(h => {
-  claudeReady = !!h.claudeConfigured; $('cmp').disabled = !claudeReady;
-  $('cmpNote').textContent = claudeReady ? '' : '(add ANTHROPIC_API_KEY to .env and restart to enable)';
+  Object.assign(RV, h.rival); fillRv(); claudeReady = !!h.rivalConfigured; $('cmp').disabled = !claudeReady;
+  $('cmpNote').textContent = claudeReady ? '' : `(add ${RV.keyVar} to .env and restart to enable)`;
 }).catch(() => {});
 document.querySelectorAll('#source button').forEach(b => b.onclick = () => {
   document.querySelectorAll('#source button').forEach(x => x.classList.toggle('on', x === b)); source = b.dataset.s; sizes(); applySource();
@@ -241,12 +251,12 @@ function renderScore() {
   const two = compareOn() && Object.keys(res.claude).length;
   const J = tally('jev'), C = two ? tally('claude') : null;
   const cell = (x, cls) => !x.n ? `<div class="v ${cls}"><b>–</b></div>` : `<div class="v ${cls}"><b>${x.tp + x.fn ? `${x.tp} of ${x.tp + x.fn}` : '–'}</b><span>caught · ${x.fp} false alarm${x.fp === 1 ? '' : 's'} of ${x.fp + x.tn} clean</span></div>`;
-  $('score').innerHTML = `<div class="srow h"><span>Call</span><span class="hide-sm">Jev flagged</span><span>Jev vs the answer</span>${two ? '<span>Claude vs the answer</span>' : '<span class="hide-sm"></span>'}</div>` +
+  $('score').innerHTML = `<div class="srow h"><span>Call</span><span class="hide-sm">Jev flagged</span><span>Jev vs the answer</span>${two ? `<span>${RV.short} vs the answer</span>` : '<span class="hide-sm"></span>'}</div>` +
     Q.map(([k, lbl, desc]) => `<div class="srow"><div class="q"><b>${lbl}</b><span>${desc}</span></div><div class="v hide-sm"><b>${J[k].flagged}</b><span>of ${J[k].n} sessions</span></div>${cell(J[k], 'j')}${two ? cell(C[k], 'c') : '<div class="hide-sm"></div>'}</div>`).join('');
 }
 
 async function runLane(engine, n, lane, my) {
-  const p = engine === 'claude' ? 'c' : 'j', who = engine === 'claude' ? 'Claude: ' : 'Jev: ';
+  const p = engine === 'claude' ? 'c' : 'j', who = engine === 'claude' ? RV.short + ': ' : 'Jev: ';
   const st = { done: 0, cost: 0, msSum: 0, secs: 0, errors: 0 };
   const ctrl = new AbortController(); ctrls.push(ctrl);
   paint(p, 0, n, 0);
@@ -291,7 +301,7 @@ $('go').onclick = async () => {
   let html = `<b>${js.done} sessions read in ${js.secs.toFixed(1)} s for $${js.cost.toFixed(4)}</b> (${(js.msSum / js.done / 1000).toFixed(2)} s and $${(js.cost / js.done).toFixed(6)} per session, ${js.done * 5} decisions). Jev put <b>${act}</b> in <i>Act now</i> and <b>${watch}</b> in <i>Coach watch</i>. Most common next move: <b>${NEXT[topNext[0]]}</b> (${topNext[1]} sessions).`;
   if (cs && cs.done) {
     const avg = st => st.msSum / st.done / 1000, per = st => st.cost / st.done;
-    html += `<br><b>Versus Claude Haiku 4.5:</b> ${avg(cs).toFixed(2)} s and $${per(cs).toFixed(6)} per session, so Jev is ${(avg(cs) / avg(js)).toFixed(1)}× faster and ${Math.round(per(cs) / per(js))}× cheaper. Compare their hit rates in the table above.`;
+    html += `<br><b>Versus ${RV.name}:</b> ${avg(cs).toFixed(2)} s and $${per(cs).toFixed(6)} per session, so Jev is ${avg(cs) >= avg(js) ? (avg(cs) / avg(js)).toFixed(1) + '× faster' : (avg(js) / avg(cs)).toFixed(1) + '× slower'} and ${per(cs) >= per(js) ? Math.round(per(cs) / per(js)) + '× cheaper' : (per(js) / per(cs)).toFixed(1) + '× pricier'}. Compare their hit rates in the table above.`;
   }
   $('result').innerHTML = html; $('result').style.display = 'block';
 };
@@ -308,12 +318,12 @@ document.addEventListener('click', ev => {
   $('dbody').innerHTML = `<div class="ttl">${esc(s.title)}</div>
     <div style="font-size:13px;color:var(--muted);margin-top:4px">${esc(s.client)} · session ${s.n} · ${esc(s.date)}</div>
     <h4>The calls</h4>
-    <table><tr><th>Call</th><th>Jev (confidence)</th>${c ? '<th>Claude</th>' : ''}<th>${source === 'sample' ? 'Expected' : 'Scorecard'}</th></tr>${rows}
+    <table><tr><th>Call</th><th>Jev (confidence)</th>${c ? `<th>${RV.short}</th>` : ''}<th>${source === 'sample' ? 'Expected' : 'Scorecard'}</th></tr>${rows}
     <tr><td>Next move</td><td><b>${NEXT[j.next] || j.next}</b></td>${c ? `<td>${NEXT[c.next] || c.next}</td>` : ''}<td></td></tr></table>
     <h4>What Jev read <span>${s.text.length.toLocaleString()} chars</span></h4><pre>${esc(s.text)}</pre>
     <h4>Request to Jev <span>POST api.typesafe.ai/v1/systemone · ${(j.ms / 1000).toFixed(2)} s · $${j.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify({ ...j.request, state: '(the write-up above)' }, null, 2))}</pre>
     <h4>Raw response <span>${esc(j.model)}</span></h4><pre>${esc(JSON.stringify(j.raw, null, 2))}</pre>
-    ${c ? `<h4 style="color:var(--c)">Claude Haiku 4.5 <span>${(c.ms / 1000).toFixed(2)} s · $${c.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify(c.raw, null, 2))}</pre>` : ''}`;
+    ${c ? `<h4 style="color:var(--c)">${RV.name} <span>${(c.ms / 1000).toFixed(2)} s · $${c.cost.toFixed(6)}</span></h4><pre>${esc(JSON.stringify(c.raw, null, 2))}</pre>` : ''}`;
   $('drawer').classList.add('open');
 });
 </script>
