@@ -2,7 +2,7 @@
   "name": "jev-showcase",
   "version": "1.0.0",
   "private": true,
-  "description": "Interactive demos of TypeSafe's Jev (System One) model — help-desk triage, smart paste, Jev plays Flappy Bird, and inbox sorting.",
+  "description": "Interactive demos of TypeSafe's Jev (System One) model — help-desk triage, smart paste, Jev plays Flappy Bird and the dino game, and inbox sorting.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {

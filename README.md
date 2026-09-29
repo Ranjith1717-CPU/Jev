@@ -1,15 +1,14 @@
 # Jev demos
 
-Four small apps showing what [TypeSafe's Jev](https://docs.typesafe.ai) (a "System One" decision model) is for — fast, typed, structured decisions, not generated text. Every page shows the exact request sent and the raw response received.
+Five small apps showing what [TypeSafe's Jev](https://docs.typesafe.ai) (a "System One" decision model) is for — fast, typed, structured decisions, not generated text. Every page shows the exact request sent and the raw response received.
 
 - **`/send`** — help-desk complaint triage. One call, eight parallel questions (team, action, refund, urgency, mood, churn risk, prompt-injection check, language) → a routing lane.
 - **`/paste`** — smart paste. Copy a whole résumé once, paste into any form field, Jev picks the exact snippet.
 - **`/flappy`** — Jev plays Flappy Bird. Every flap/wait is a live decision; the game describes itself as text.
 - **`/dino`** — Jev plays the Chrome dino game. Every jump/duck/run is a live decision from a text description of the obstacle ahead (cactus, or a bird flying low, at head height or high).
 - **`/mail`** — Jev sorts an inbox live: 1,000 real emails randomly sampled from the [Enron email corpus](https://huggingface.co/datasets/LLM-PBE/enron-email) (category, priority, spam, reply-needed) — or your own Gmail (read-only, subject-lines-only).
-- **`/coach`**: Jev reads coaching-session write-ups and makes four calls (is anyone's sense of value eroding, is the leader out of bandwidth, too many commitments, is someone drifting) plus the coach's next move, then triages sessions into *Act now / Coach watch / On track*. Ships with 12 fictional sessions; can also run on your own BIG Intelligence export, locally (see below).
 
-**Compare with Gemini (optional):** add `GEMINI_API_KEY` to `.env` (get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)) and `/mail`, `/send`, `/paste` and `/coach` get a "race against Gemini 3.5 Flash-Lite" toggle. Gemini answers the exact same typed questions (via structured output), side by side with Jev, and each page shows speed, cost and where the two disagree. Gemini 3.5 Flash-Lite costs $0.30 / $2.50 per million input / output tokens, roughly 7–9× Jev per call. The Gemini lane on `/mail` runs at most 100 emails, 4 at a time; on a free-tier key Google allows only about 20 requests a minute, so a 100-email race waits on rate limits (the client retries after the delay Google asks for). `/flappy` and `/dino` stay Jev-only, since they need a decision every 0.1–0.14 s.
+**Compare with Gemini (optional):** add `GEMINI_API_KEY` to `.env` (get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)) and `/mail`, `/send` and `/paste` get a "race against Gemini 3.5 Flash-Lite" toggle. Gemini answers the exact same typed questions (via structured output), side by side with Jev, and each page shows speed, cost and where the two disagree. Gemini 3.5 Flash-Lite costs $0.30 / $2.50 per million input / output tokens, roughly 7–9× Jev per call. The Gemini lane on `/mail` runs at most 100 emails, 4 at a time; on a free-tier key Google allows only about 20 requests a minute, so a 100-email race waits on rate limits (the client retries after the delay Google asks for). `/flappy` and `/dino` stay Jev-only, since they need a decision every 0.1–0.14 s.
 
 If `GEMINI_API_KEY` is not set but `ANTHROPIC_API_KEY` is, the same toggle races Claude Haiku 4.5 instead ($1 / $5 per million tokens).
 
@@ -75,9 +74,6 @@ lib/gemini.js        Gemini 3.5 Flash-Lite client that answers Jev-style questio
 lib/claude.js        Claude Haiku 4.5 client, the fallback comparison when no Gemini key is set
 data/enron-inbox.json    1,000 real Enron emails for /mail
 scripts/fetch-enron.js   Rebuilds data/enron-inbox.json from Hugging Face
-data/coaching-sample.json       12 fictional coaching sessions for /coach
-scripts/build-coaching-data.js  Anonymises a BIG Intelligence export into data/private/ (git-ignored)
-scripts/tune-coach-question.js  Compares wordings of a /coach question against your local data
 public/              The demo pages + landing page
 ```
 
@@ -86,23 +82,6 @@ public/              The demo pages + landing page
 `data/enron-inbox.json` is a random, lightly-cleaned sample of 1,000 emails from the public **Enron email corpus**, via the [`LLM-PBE/enron-email`](https://huggingface.co/datasets/LLM-PBE/enron-email) dataset on Hugging Face (~490k emails, raw text). Subjects and senders are parsed from the text where present; bodies are trimmed to 1,500 characters. The emails are unlabeled, so the demo shows what Jev decides rather than an accuracy score.
 
 To rebuild it (a different size or sample), run `node scripts/fetch-enron.js [count] [seed]` (defaults: 1000, 42). It pulls rows through the Hugging Face datasets-server API, so no Python or full download is needed.
-
-### Running /coach on your own coaching data
-
-```bash
-node scripts/build-coaching-data.js path/to/export.zip   # or an extracted folder
-```
-
-This reads every `*coach-dump.core.json` in the export (nested zips are fine) and writes `data/private/coaching-sessions.json`, which is **git-ignored and never committed**. Each session becomes the write-up Jev reads (summary, key issue, risks, commitments, and the coach's notes on people) with names replaced: people by role, the company by "the company", the coach by "the coach", plus common first names of outside contacts. Scores and health bands are kept out of the text and used only as the answer key, from BIG Intelligence's per-person scorecards:
-
-| Call | Checked against |
-|---|---|
-| Value eroding | someone's ROI perception or chemistry fell by 1+ point since their last read |
-| Leader out of bandwidth | a decision-maker's implementation capacity is below 6 |
-| Too many commitments | more than 3 actions set in the session |
-| Someone drifting | anyone in the room below the Healthy band |
-
-Restart the server and `/coach` shows a **Your engagements (local only)** option. Note that the anonymised text is sent to the Jev API (and to Gemini or Claude if the comparison is on) for classification. Anonymisation is name-based, so places and vendor names remain.
 
 ## Deploying
 
