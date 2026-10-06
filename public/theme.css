@@ -1,0 +1,70 @@
+/* Shared visual refresh, loaded after each page's own <style> so it wins ties.
+   Layout and behaviour stay in the pages; this file only restyles them. */
+:root{--ink:#0F172A;--muted:#64748B;--line:#E2E8F0;--accent:#0D9488;--j:#0D9488;--accent-2:#6366F1;
+  --glow:rgba(13,148,136,.16);--shadow:0 1px 2px rgba(15,23,42,.04),0 10px 28px -14px rgba(15,23,42,.18)}
+
+body{background:
+  radial-gradient(1100px 520px at 0% -8%,rgba(13,148,136,.11),transparent 62%),
+  radial-gradient(900px 480px at 100% -4%,rgba(99,102,241,.09),transparent 60%),
+  #F6F8FB;background-attachment:fixed;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto 0;height:3px;z-index:50;
+  background:linear-gradient(90deg,#0D9488,#14B8A6 45%,#6366F1)}
+
+h1{letter-spacing:-.02em}
+h1 span{background:linear-gradient(95deg,#0D9488 10%,#14B8A6 45%,#6366F1 95%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted)}
+
+/* Back link becomes a pill */
+.back{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:999px;background:rgba(255,255,255,.8);
+  border:1px solid var(--line);font-weight:500;color:var(--muted);box-shadow:0 1px 2px rgba(15,23,42,.04);transition:all .15s}
+.back:hover{color:var(--accent);border-color:rgba(13,148,136,.4);transform:translateX(-2px)}
+
+/* Sidebar of sample prompts */
+aside{background:rgba(255,255,255,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-right:1px solid var(--line)}
+aside h2{text-transform:uppercase;letter-spacing:.07em;font-size:11.5px}
+.pr{transition:background .12s,color .12s,transform .12s;font-size:15px}
+.pr:hover{background:rgba(13,148,136,.07);transform:translateX(2px)}
+.pr.on{background:linear-gradient(90deg,rgba(13,148,136,.13),rgba(13,148,136,.03));box-shadow:inset 3px 0 0 var(--accent)}
+
+/* Cards */
+.card,.res,.lanes>.lane,.stat,.score>div,details,.feed,.gpanel{border:1px solid rgba(15,23,42,.07)!important;box-shadow:var(--shadow);border-radius:16px}
+.lanes>.lane,.feed{border-radius:18px}
+.stat{transition:transform .15s}
+.stat:hover{transform:translateY(-2px)}
+.score .j{background:linear-gradient(180deg,#F0FDFA,#fff)!important}
+.score .cl{background:linear-gradient(180deg,#FFF7ED,#fff)!important}
+.result{box-shadow:var(--shadow);background:linear-gradient(135deg,#ECFDF5,#EEF2FF)!important;border-color:rgba(13,148,136,.2)!important}
+
+/* Primary buttons */
+.send,button.go{background:linear-gradient(135deg,#0D9488,#14B8A6)!important;color:#fff;
+  box-shadow:0 8px 18px -8px rgba(13,148,136,.65),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .12s,box-shadow .12s,filter .12s}
+.send:hover:not(:disabled),button.go:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.05);box-shadow:0 12px 22px -8px rgba(13,148,136,.7),inset 0 1px 0 rgba(255,255,255,.25)}
+.send:active,button.go:active{transform:translateY(0)}
+button.ghost{transition:all .12s}
+button.ghost:hover{color:var(--ink)}
+
+/* Text inputs */
+textarea,input[type=text],.f input{transition:border-color .15s,box-shadow .15s}
+textarea:focus,.f input:focus,.f textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 4px var(--glow)}
+.ask textarea{box-shadow:var(--shadow)}
+
+/* Segmented toggles */
+.seg,.mode,.filter{background:#EAEFF5!important;border:0!important;padding:3px;gap:2px;border-radius:12px}
+.seg button,.mode button,.filter button{border-radius:9px;transition:background .12s,color .12s}
+.seg button.on,.mode button.on,.filter button.on{background:#fff!important;color:var(--ink);box-shadow:0 1px 3px rgba(15,23,42,.12)}
+
+/* Raw request / response panels: dark code view */
+pre{background:#0B1220!important;color:#CBD5E1!important;border:1px solid #1E293B;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+pre b{color:#5EEAD4!important}
+pre::-webkit-scrollbar{width:8px;height:8px}
+pre::-webkit-scrollbar-thumb{background:#334155;border-radius:8px}
+pre::-webkit-scrollbar-track{background:transparent}
+
+/* Small touches */
+.cmp input,.toolset code{transition:all .12s}
+.toolset code{background:linear-gradient(135deg,#F0FDFA,#EEF2FF);border:1px solid rgba(13,148,136,.15)}
+.out,#lanes>.lane{animation:rise .35s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+canvas{box-shadow:0 18px 40px -18px rgba(15,23,42,.35)!important}
+::selection{background:rgba(13,148,136,.2)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

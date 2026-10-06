@@ -5,83 +5,185 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jev demos</title>
 <style>
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--ink:#1C2322;--muted:#7A8381;--line:#E4E9E8;--accent:#149A8E}
-body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif;padding:56px 24px;max-width:960px;margin:0 auto}
-h1{font-family:"Space Grotesk",sans-serif;font-size:42px}
-h1 span{color:var(--accent)}
-.sub{margin-top:10px;color:var(--muted);font-size:18px;max-width:640px;line-height:1.55}
-.banner{margin-top:18px;padding:12px 16px;border-radius:10px;font-size:14px;background:#FBEBEC;border:1px solid #F3D3D5;color:#9A2A30;display:none}
+body{color:var(--ink);font-family:"Inter",-apple-system,sans-serif}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
+.brand{display:flex;align-items:center;gap:10px;font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:20px}
+.logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#0D9488,#6366F1);display:grid;place-items:center;color:#fff;font-size:16px;box-shadow:0 6px 16px -6px rgba(99,102,241,.6)}
+nav a.doc{font-size:14px;color:var(--muted);text-decoration:none;padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.7)}
+nav a.doc:hover{color:var(--accent);border-color:rgba(13,148,136,.4)}
+
+.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:48px;align-items:center;padding:36px 0 28px}
+.pill{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:#0F766E;background:rgba(13,148,136,.09);border:1px solid rgba(13,148,136,.2);border-radius:999px;padding:5px 12px}
+.pill i{width:7px;height:7px;border-radius:50%;background:#14B8A6;box-shadow:0 0 0 4px rgba(20,184,166,.2);animation:pulse 2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(20,184,166,0)}}
+h1{margin-top:18px;font-family:"Space Grotesk",sans-serif;font-size:56px;line-height:1.04;font-weight:700}
+.sub{margin-top:18px;font-size:19px;line-height:1.6;max-width:560px}
+.cta{margin-top:28px;display:flex;gap:12px;flex-wrap:wrap}
+.cta a{font-weight:600;font-size:15px;text-decoration:none;border-radius:12px;padding:13px 22px;transition:transform .12s,box-shadow .12s}
+.cta .p{color:#fff;background:linear-gradient(135deg,#0D9488,#14B8A6);box-shadow:0 10px 22px -10px rgba(13,148,136,.75)}
+.cta .s{color:var(--ink);background:#fff;border:1px solid var(--line)}
+.cta a:hover{transform:translateY(-2px)}
+
+/* Hero visual: one real decision from the live run */
+.demo{position:relative}
+.demo::before{content:"";position:absolute;inset:-30px;background:radial-gradient(closest-side,rgba(99,102,241,.18),transparent);z-index:-1}
+.dc{background:#0B1220;color:#CBD5E1;border-radius:20px;padding:22px;border:1px solid #1E293B;box-shadow:0 30px 60px -25px rgba(15,23,42,.55)}
+.dc .bar3{display:flex;gap:6px;margin-bottom:16px}.dc .bar3 i{width:10px;height:10px;border-radius:50%;background:#334155}
+.dc .lbl{font-family:"Space Mono",monospace;font-size:11.5px;color:#64748B;text-transform:uppercase;letter-spacing:.08em}
+.dc .msg{margin-top:6px;font-size:16px;color:#F1F5F9;line-height:1.45}
+.dc .rows{margin-top:18px;display:grid;gap:10px}
+.dc .r{display:grid;grid-template-columns:118px 1fr 42px;gap:10px;align-items:center;font-family:"Space Mono",monospace;font-size:12.5px}
+.dc .r .t{height:8px;border-radius:6px;background:#1E293B;overflow:hidden}
+.dc .r .t b{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#14B8A6,#6366F1);width:0;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.dc .r span:last-child{text-align:right;color:#94A3B8}
+.dc .verdict{margin-top:18px;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25)}
+.dc .verdict b{font-family:"Space Grotesk",sans-serif;font-size:17px;color:#FBBF24}
+.dc .verdict span{font-family:"Space Mono",monospace;font-size:11.5px;color:#94A3B8}
+
+.stats{margin-top:30px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.st{background:rgba(255,255,255,.75);border:1px solid rgba(15,23,42,.07);border-radius:16px;padding:16px 18px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.st b{display:block;font-family:"Space Grotesk",sans-serif;font-size:26px;letter-spacing:-.02em}
+.st span{font-size:13.5px;color:var(--muted);line-height:1.4}
+
+.banner{margin-top:18px;padding:12px 16px;border-radius:12px;font-size:14px;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;display:none}
 .banner.show{display:block}
-.sec{margin-top:40px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
-.grid{margin-top:14px;display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
-a.card{display:block;background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px 26px;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s}
-a.card:hover{border-color:var(--accent);transform:translateY(-2px)}
-.card h2{font-family:"Space Grotesk",sans-serif;font-size:22px}
-.card p{margin-top:8px;color:var(--muted);font-size:15px;line-height:1.5}
-.tag{display:inline-block;margin-top:14px;font-family:"Space Mono",monospace;font-size:12px;color:var(--accent);background:#EEF7F5;border-radius:999px;padding:4px 10px}
-footer{margin-top:48px;color:var(--muted);font-size:13.5px;line-height:1.6}
-footer code{background:#F0F3F2;border-radius:5px;padding:1px 6px;font-family:"Space Mono",monospace}
-@media (max-width:640px){.grid{grid-template-columns:1fr}}
+
+.how{margin-top:56px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px;counter-reset:s}
+.how div{position:relative;padding:18px 20px 18px 58px;border-radius:16px;background:rgba(255,255,255,.6);border:1px dashed rgba(15,23,42,.14)}
+.how div::before{counter-increment:s;content:counter(s);position:absolute;left:18px;top:18px;width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-family:"Space Grotesk",sans-serif;font-weight:700;font-size:14px;color:#fff;background:linear-gradient(135deg,#0D9488,#6366F1)}
+.how b{display:block;font-size:15px}
+.how span{font-size:14px;color:var(--muted);line-height:1.5}
+.how code{font-family:"Space Mono",monospace;font-size:12.5px;color:#0F766E}
+
+.sec{margin-top:56px;display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.sec h3{font-family:"Space Grotesk",sans-serif;font-size:26px;letter-spacing:-.01em}
+.sec p{color:var(--muted);font-size:15px}
+.grid{margin-top:18px;display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+a.card{position:relative;display:flex;gap:18px;padding:24px;text-decoration:none;color:inherit;background:#fff;transition:transform .18s,box-shadow .18s,border-color .18s;overflow:hidden}
+a.card::after{content:"";position:absolute;inset:0;background:linear-gradient(135deg,var(--tint),transparent 55%);opacity:0;transition:opacity .2s;pointer-events:none}
+a.card:hover{transform:translateY(-3px);box-shadow:0 1px 2px rgba(15,23,42,.04),0 22px 40px -20px rgba(15,23,42,.3)}
+a.card:hover::after{opacity:1}
+.ic{flex:0 0 46px;height:46px;border-radius:13px;display:grid;place-items:center;color:#fff;background:var(--g);box-shadow:0 8px 18px -8px var(--sh)}
+.ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.card h2{font-family:"Space Grotesk",sans-serif;font-size:20px;display:flex;align-items:center;gap:8px}
+.card h2 .new{font-family:"Inter",sans-serif;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#4338CA;background:#EEF2FF;border-radius:999px;padding:2px 8px}
+.card p{margin-top:6px;color:var(--muted);font-size:14.5px;line-height:1.55}
+.meta{margin-top:12px;display:flex;align-items:center;gap:10px}
+.tag{font-family:"Space Mono",monospace;font-size:12px;color:var(--accent);background:#F0FDFA;border:1px solid rgba(13,148,136,.15);border-radius:999px;padding:3px 10px}
+.go{font-size:13px;font-weight:600;color:var(--accent);opacity:0;transform:translateX(-4px);transition:all .18s}
+a.card:hover .go{opacity:1;transform:none}
+.c1{--g:linear-gradient(135deg,#0D9488,#14B8A6);--sh:rgba(13,148,136,.7);--tint:rgba(13,148,136,.06)}
+.c2{--g:linear-gradient(135deg,#4F46E5,#818CF8);--sh:rgba(79,70,229,.7);--tint:rgba(79,70,229,.06)}
+.c3{--g:linear-gradient(135deg,#DB2777,#F472B6);--sh:rgba(219,39,119,.6);--tint:rgba(219,39,119,.05)}
+.c4{--g:linear-gradient(135deg,#EA580C,#FB923C);--sh:rgba(234,88,12,.6);--tint:rgba(234,88,12,.05)}
+.c5{--g:linear-gradient(135deg,#0284C7,#38BDF8);--sh:rgba(2,132,199,.6);--tint:rgba(2,132,199,.05)}
+.c6{--g:linear-gradient(135deg,#65A30D,#A3E635);--sh:rgba(101,163,13,.6);--tint:rgba(101,163,13,.06)}
+.c7{--g:linear-gradient(135deg,#7C3AED,#C084FC);--sh:rgba(124,58,237,.6);--tint:rgba(124,58,237,.05)}
+.c8{--g:linear-gradient(135deg,#0F172A,#475569);--sh:rgba(15,23,42,.6);--tint:rgba(15,23,42,.04)}
+
+footer{margin:64px 0 40px;padding-top:24px;border-top:1px solid var(--line);color:var(--muted);font-size:13.5px;line-height:1.7}
+footer code{background:#EEF2F6;border-radius:6px;padding:1px 7px;font-family:"Space Mono",monospace;font-size:12.5px;color:var(--ink)}
+@media (max-width:900px){.hero{grid-template-columns:1fr;gap:36px}h1{font-size:42px}.stats{grid-template-columns:repeat(2,1fr)}.how,.grid{grid-template-columns:1fr}}
+@media (max-width:480px){h1{font-size:36px}.sub{font-size:17px}.dc .r{grid-template-columns:96px 1fr 38px}a.card{padding:20px 18px}}
 </style>
+<link rel="stylesheet" href="/theme.css">
 </head>
 <body>
-<h1>Jev <span>demos</span></h1>
-<p class="sub">Small apps showing what TypeSafe's Jev model is for: fast, typed, structured decisions — not generated text. Every page shows the real request and response.</p>
-<div class="banner" id="banner">Server has no <code>TYPESAFE_API_KEY</code> set yet — the demos will error until you add one to <code>.env</code>. See the setup note below.</div>
-<h3 class="sec">Agent decisions &amp; tool calling</h3>
+<div class="wrap">
+<nav>
+  <div class="brand"><div class="logo">J</div>Jev demos</div>
+  <a class="doc" href="https://docs.typesafe.ai" target="_blank" rel="noopener">TypeSafe docs ↗</a>
+</nav>
+
+<section class="hero">
+  <div>
+    <span class="pill"><i></i>System One model · $0.042 per million input tokens</span>
+    <h1>Fast, typed decisions <span>for your agents.</span></h1>
+    <p class="sub">Jev doesn't write text. It picks: which tool to call, whether a call is safe, where a ticket goes. It answers in under half a second, with a probability on every option. Every demo shows the real request and response.</p>
+    <div class="cta"><a class="p" href="/agent.html">Watch Jev run an agent →</a><a class="s" href="#demos">See all demos</a></div>
+    <div class="banner" id="banner">The server has no <code>TYPESAFE_API_KEY</code> set yet, so the demos will error until you add one to <code>.env</code>. See the setup note below.</div>
+  </div>
+  <div class="demo">
+    <div class="dc">
+      <div class="bar3"><i></i><i></i><i></i></div>
+      <div class="lbl">User asks the agent</div>
+      <div class="msg">"Delete every file in my drafts folder."</div>
+      <div class="rows" id="rows">
+        <div class="r"><span>delete_file</span><div class="t"><b data-w="82"></b></div><span>82%</span></div>
+        <div class="r"><span>changes data?</span><div class="t"><b data-w="98"></b></div><span>98%</span></div>
+        <div class="r"><span>missing info?</span><div class="t"><b data-w="44"></b></div><span>44%</span></div>
+        <div class="r"><span>manipulation?</span><div class="t"><b data-w="4"></b></div><span>4%</span></div>
+      </div>
+      <div class="verdict"><b>Confirm, then call</b><span>jev · 0.39 s</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="stats">
+  <div class="st"><b>~0.4 s</b><span>per decision, measured on the live API</span></div>
+  <div class="st"><b>20–27×</b><span>cheaper than Claude Haiku 4.5 on agent runs</span></div>
+  <div class="st"><b>Output free</b><span>billed on input tokens only</span></div>
+  <div class="st"><b>Probabilities</b><span>on every answer, so you know when to ask a human</span></div>
+</div>
+
+<div class="how">
+  <div><b>Describe the situation</b><span>Plain text <code>state</code>: a message, a tool call, a game frame.</span></div>
+  <div><b>Ask typed questions</b><span><code>choice</code>, <code>noul</code> (yes/no) or <code>score</code>, many in one call.</span></div>
+  <div><b>Act on the answer</b><span>Typed values with probabilities. No parsing, no free text.</span></div>
+</div>
+
+<div class="sec" id="demos"><h3>Agent decisions &amp; tool calling</h3><p>What agents decide between steps.</p></div>
 <div class="grid">
-  <a class="card" href="/tools.html">
-    <h2>Tool router</h2>
-    <p>The first step of every agent turn: which tool to call, and whether to ask a follow-up, wait for confirmation or just go. Bring your own tool list; Jev gives a probability for every tool.</p>
-    <span class="tag">/tools</span>
+  <a class="card c1" href="/tools.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div>
+    <div><h2>Tool router <span class="new">New</span></h2><p>Which tool should the agent call, and should it go ahead, confirm first or ask a follow-up? Bring your own tool list.</p><div class="meta"><span class="tag">/tools</span><span class="go">Open →</span></div></div>
   </a>
-  <a class="card" href="/guard.html">
-    <h2>Tool-call guardrail</h2>
-    <p>Before an agent's tool call runs, Jev checks it against what the user asked: off task, destructive, leaking secrets, or following instructions planted in a web page. Allow, ask or block.</p>
-    <span class="tag">/guard</span>
+  <a class="card c2" href="/guard.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></div>
+    <div><h2>Tool-call guardrail <span class="new">New</span></h2><p>Checks a call before it runs: off task, destructive, leaking secrets or following planted instructions. Then it runs the call, asks the user or blocks it.</p><div class="meta"><span class="tag">/guard</span><span class="go">Open →</span></div></div>
   </a>
-  <a class="card" href="/agent.html">
-    <h2>Jev runs the agent loop</h2>
-    <p>A support agent with seven tools. Every step (look up, track, check policy, refund, reply, escalate) is a Jev decision, with a built-in guard against planted instructions.</p>
-    <span class="tag">/agent</span>
+  <a class="card c3" href="/agent.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></div>
+    <div><h2>Jev runs the agent loop <span class="new">New</span></h2><p>A support agent with seven tools. Jev picks every step until it replies or escalates, and it spots planted instructions in tool results.</p><div class="meta"><span class="tag">/agent</span><span class="go">Open →</span></div></div>
   </a>
-  <a class="card" href="/send.html">
-    <h2>Help-desk triage</h2>
-    <p>Write a customer complaint. One call, eight parallel questions decide whether the agent acts on its own, a person confirms, or a person takes over.</p>
-    <span class="tag">/send</span>
+  <a class="card c4" href="/send.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+    <div><h2>Help-desk triage</h2><p>Eight questions in one call decide who handles a complaint: the agent on its own, the agent after a person confirms, or a person.</p><div class="meta"><span class="tag">/send</span><span class="go">Open →</span></div></div>
   </a>
 </div>
-<h3 class="sec">Classification &amp; real-time control</h3>
+
+<div class="sec"><h3>Classification &amp; real-time control</h3><p>Sorting at scale, and decisions every 0.1 s.</p></div>
 <div class="grid">
-  <a class="card" href="/paste.html">
-    <h2>Smart paste</h2>
-    <p>Copy a whole résumé once. Paste into any form field. Jev picks the exact snippet that belongs there.</p>
-    <span class="tag">/paste</span>
+  <a class="card c5" href="/mail.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></svg></div>
+    <div><h2>Sort an inbox</h2><p>1,000 real Enron emails classified live (category, priority, spam, reply needed), or your own Gmail by subject line only.</p><div class="meta"><span class="tag">/mail</span><span class="go">Open →</span></div></div>
   </a>
-  <a class="card" href="/flappy.html">
-    <h2>Jev plays Flappy Bird</h2>
-    <p>Every move — flap or wait — is a live Jev decision. The game only describes what's happening in text; Jev decides.</p>
-    <span class="tag">/flappy</span>
+  <a class="card c6" href="/paste.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></div>
+    <div><h2>Smart paste</h2><p>Copy a whole résumé once and paste it into any form field. Jev picks the exact snippet that belongs there.</p><div class="meta"><span class="tag">/paste</span><span class="go">Open →</span></div></div>
   </a>
-  <a class="card" href="/dino.html">
-    <h2>Jev plays the Dino game</h2>
-    <p>The Chrome T-Rex runner: every move — jump, duck or keep running — is a live Jev decision, made from a text description of the cactus or bird ahead.</p>
-    <span class="tag">/dino</span>
+  <a class="card c7" href="/flappy.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></div>
+    <div><h2>Jev plays Flappy Bird</h2><p>Flap or wait, decided live from a text description of the game, several decisions every second.</p><div class="meta"><span class="tag">/flappy</span><span class="go">Open →</span></div></div>
   </a>
-  <a class="card" href="/mail.html">
-    <h2>Sort an inbox</h2>
-    <p>Jev classifies 1,000 real Enron emails live (spam, priority, category, reply-needed) — or connect your own Gmail, read-only, subject lines only.</p>
-    <span class="tag">/mail</span>
+  <a class="card c8" href="/dino.html">
+    <div class="ic"><svg viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+    <div><h2>Jev plays the Dino game</h2><p>The Chrome T-Rex runner: jump, duck or keep running, decided every 0.1 s from the cactus or bird ahead.</p><div class="meta"><span class="tag">/dino</span><span class="go">Open →</span></div></div>
   </a>
 </div>
+
 <footer>
-  Server setup: copy <code>.env.example</code> to <code>.env</code>, add your <code>TYPESAFE_API_KEY</code> from
-  <code>console.typesafe.ai/keys</code>, then <code>npm install &amp;&amp; npm start</code>. Gmail is optional — see README.md.
+  Setup: copy <code>.env.example</code> to <code>.env</code>, add your <code>TYPESAFE_API_KEY</code> from <code>console.typesafe.ai/keys</code>, then run <code>npm install &amp;&amp; npm start</code>.
+  Add <code>ANTHROPIC_API_KEY</code> or <code>GEMINI_API_KEY</code> to race a rival model; Gmail is optional (see README.md).
 </footer>
+</div>
 <script>
 fetch('/api/health').then(r => r.json()).then(h => { if (!h.jevConfigured) document.getElementById('banner').classList.add('show'); }).catch(() => {});
+// Fill the hero's probability bars once the page has painted.
+requestAnimationFrame(() => setTimeout(() => document.querySelectorAll('#rows b').forEach(b => b.style.width = b.dataset.w + '%'), 150));
 </script>
 </body>
 </html>
