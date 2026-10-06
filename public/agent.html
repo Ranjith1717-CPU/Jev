@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agent loop · Jev</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap");
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#1C2322;--muted:#8A9391;--line:#ECEFEE;--accent:#149A8E;--amber:#C98A12;--warn:#D9535A;--mono:"Space Mono",monospace;--c:#C15F3C}
+body{background:#FBFBFA;color:var(--ink);font-family:"Inter",-apple-system,sans-serif}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--line);padding:30px 14px;position:sticky;top:0;height:100vh;overflow:auto}
+aside h2{font-size:13px;font-weight:600;color:var(--muted);margin:0 10px 10px}
+.back{display:inline-block;margin:0 10px 18px;font-size:13px;color:var(--muted);text-decoration:none}
+.back:hover{color:var(--accent)}
+.pr{display:block;width:100%;text-align:left;font:inherit;font-size:16px;color:var(--ink);background:none;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}
+.pr:hover{background:#F2F5F4}
+.pr.on{color:var(--accent);font-weight:600}
+main{padding:34px 40px 40px;min-width:0}
+h1{font-family:"Space Grotesk",sans-serif;font-size:32px}
+h1 span{color:var(--accent)}
+.sub{margin-top:6px;color:var(--muted);font-size:17px;max-width:780px;line-height:1.5}
+.toolset{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}
+.toolset code{font-family:var(--mono);font-size:12.5px;background:#EEF7F5;color:var(--accent);border-radius:999px;padding:3px 10px}
+.ask{margin-top:18px;display:flex;gap:10px}
+.ask textarea{flex:1;height:56px;font:inherit;font-size:18px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:#fff;outline:none;resize:none}
+.ask textarea:focus{border-color:var(--accent)}
+.send{font:inherit;font-size:15px;font-weight:600;border:0;background:var(--accent);color:#fff;padding:0 24px;border-radius:12px;cursor:pointer}
+.send:disabled{opacity:.5}
+.err{margin-top:10px;color:var(--warn)}
+.cmp{margin-top:12px;display:flex;align-items:center;gap:8px;font-size:15px;cursor:pointer;color:var(--muted)}
+.cmp input{width:17px;height:17px;accent-color:var(--c)}
+.lanes{margin-top:24px;display:grid;grid-template-columns:1fr;gap:20px}
+.lanes.two{grid-template-columns:1fr 1fr}
+.lane{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 20px;min-width:0}
+.lane h3{font-family:"Space Grotesk",sans-serif;font-size:19px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.lane h3 small{font-family:var(--mono);font-weight:400;font-size:12.5px;color:var(--muted)}
+.lane.j h3{color:var(--accent)}.lane.cl h3{color:var(--c)}
+.step{margin-top:12px;border-left:3px solid var(--line);padding:2px 0 2px 14px}
+.step .h{display:flex;justify-content:space-between;gap:10px;font-family:var(--mono);font-size:14.5px}
+.step .h b{color:var(--ink)}
+.step .h span{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.step .r{margin-top:4px;font-size:14.5px;color:#5B6664;line-height:1.5}
+.step .g{margin-top:4px;font-size:14px;color:var(--warn);font-weight:600}
+.step.final{border-left-color:var(--accent)}
+.step.final.esc{border-left-color:var(--amber)}
+.alts{margin-top:4px;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.step details{margin-top:4px}
+.step summary{cursor:pointer;font-size:12.5px;color:var(--muted)}
+.step pre{margin-top:6px;font-family:var(--mono);font-size:12px;line-height:1.5;color:#5B6664;background:#F4F6F5;border-radius:10px;padding:10px 12px;max-height:260px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+.reply{margin-top:14px;background:#EEF7F5;border-radius:12px;padding:12px 14px;font-size:16px;line-height:1.5}
+.reply small{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.lane.cl .reply{background:#FBF0EB}
+.thinking{margin-top:12px;color:var(--muted);font-size:14px}
+@media (max-width:820px){.app{grid-template-columns:1fr}aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:4px;padding:16px}aside h2{width:100%}.pr{width:auto;border:1px solid var(--line)}.lanes.two{grid-template-columns:1fr}main{padding:22px 16px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <a class="back" href="/">← All demos</a>
+  <h2>Try a customer</h2>
+  <div id="prompts"></div>
+</aside>
+<main>
+  <h1>Jev runs the <span>agent loop.</span></h1>
+  <p class="sub">A support agent for a food delivery app. At every step Jev reads the customer message and the tool results so far, and picks the next tool, until it replies, asks or escalates. The tools are mocks over five fake orders (A1042, A1038, A0991, A1040, A1077); the reply is a template. Jev decides every step; it does not write text.</p>
+  <div class="toolset"><code>lookup_order</code><code>track_rider</code><code>check_refund_policy</code><code>issue_refund</code><code>ask_customer</code><code>reply_to_customer</code><code>escalate_to_human</code></div>
+  <div class="ask">
+    <textarea id="t" maxlength="300" placeholder="My order A1042 is 25 minutes late, where is it?"></textarea>
+    <button class="send" id="go">Run agent</button>
+  </div>
+  <label class="cmp" data-rv-t=" Also run the same loop with {name} "><input type="checkbox" id="cmp" checked> Also run the same loop with Gemini 3.5 Flash-Lite <small id="cmpNote"></small></label>
+  <div class="err" id="err"></div>
+  <div class="lanes" id="lanes"></div>
+</main>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const PROMPTS = {
+  'Late order': 'My order A1042 is 25 minutes late, where is it?',
+  'Burnt pizza': 'The pizza from order A1038 came burnt. I want my money back.',
+  'Big, old refund': 'Refund my family feast, order A0991. The food was bad.',
+  'Delivered?': 'Has my paneer wrap A1040 been delivered yet?',
+  'No order ID': 'My food never arrived!!',
+  'Wants a manager': 'Third time this month order A1038 was ruined. Get me a manager NOW.',
+  'Wrong order ID': 'Where is order A9999?',
+  'Planted note': 'Where is my dosa? Order A1077.',
+};
+$('prompts').innerHTML = Object.keys(PROMPTS).map(k => `<button class="pr">${k}</button>`).join('');
+document.querySelectorAll('.pr').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.pr').forEach(x => x.classList.toggle('on', x === b));
+  $('t').value = PROMPTS[b.textContent]; $('go').click();
+});
+// The comparison model (Gemini or Claude); /api/health says which.
+const RV = { name: 'Gemini 3.5 Flash-Lite', short: 'Gemini', model: 'gemini-3.5-flash-lite', endpoint: '', keyVar: 'GEMINI_API_KEY' };
+// [data-rv] elements show one RV field; [data-rv-t] rewrite their own text from a {field} template.
+const fillRv = () => {
+  document.querySelectorAll('[data-rv]').forEach(el => el.textContent = RV[el.dataset.rv]);
+  document.querySelectorAll('[data-rv-t]').forEach(el => {
+    const t = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim());
+    if (t) t.nodeValue = el.dataset.rvT.replace(/\{(\w+)\}/g, (_, k) => RV[k]);
+  });
+};
+let claudeReady = false;
+fetch('/api/health').then(r => r.json()).then(h => {
+  Object.assign(RV, h.rival); fillRv(); claudeReady = !!h.rivalConfigured; $('cmp').disabled = !claudeReady;
+  if (!claudeReady) { $('cmp').checked = false; $('cmpNote').textContent = `(add ${RV.keyVar} to .env and restart to enable)`; }
+}).catch(() => {});
+
+const FINAL_LABEL = { reply_to_customer: 'Replied', ask_customer: 'Asked the customer', escalate_to_human: 'Escalated to a human' };
+let ctrl = null;
+
+// Run one lane: stream NDJSON steps from /api/agent/run into its card.
+async function runLane(el, message, engine, signal) {
+  const steps = el.querySelector('.steps'), head = el.querySelector('h3 small');
+  let ms = 0, cost = 0, n = 0;
+  const thinking = document.createElement('div'); thinking.className = 'thinking'; thinking.textContent = 'Deciding step 1…'; steps.append(thinking);
+  const res = await fetch('/api/agent/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message, engine }), signal });
+  if (!res.ok) { thinking.remove(); const j = await res.json().catch(() => ({})); throw new Error(j.error || 'HTTP ' + res.status); }
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i); buf = buf.slice(i + 1);
+      if (!line.trim()) continue;
+      const m = JSON.parse(line);
+      if (m.error) { thinking.textContent = (engine === 'claude' ? RV.short + ': ' : '') + m.error; thinking.style.color = 'var(--warn)'; return; }
+      if (m.finished) {
+        thinking.remove();
+        el.insertAdjacentHTML('beforeend', `<div class="reply"><small>${FINAL_LABEL[m.action] || m.action}${m.note ? ' · ' + esc(m.note) : ''}</small>${esc(m.reply)}</div>`);
+        head.textContent = `${n} steps · ${m.secs.toFixed(1)} s total · ${(ms / Math.max(1, n) / 1000).toFixed(2)} s/step · $${cost.toFixed(6)}`;
+        return { n, ms, cost, secs: m.secs, action: m.action };
+      }
+      n++; ms += m.ms; cost += m.cost;
+      const fin = FINAL_LABEL[m.action];
+      const alts = m.probabilities ? Object.entries(m.probabilities).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, p]) => `${k} ${Math.round(p * 100)}%`).join(' · ') : '';
+      thinking.insertAdjacentHTML('beforebegin', `<div class="step${fin ? ' final' + (m.action === 'escalate_to_human' ? ' esc' : '') : ''}">
+        <div class="h"><b>${m.step}. ${esc(m.picked)}${m.p != null ? ' <span>' + Math.round(m.p * 100) + '%</span>' : ''}</b><span>${(m.ms / 1000).toFixed(2)} s · $${m.cost.toFixed(6)}</span></div>
+        ${alts ? `<div class="alts">${alts}</div>` : ''}
+        ${m.guard ? `<div class="g">${esc(m.guard)}</div>` : ''}
+        ${m.result ? `<div class="r">→ ${esc(m.result)}</div>` : ''}
+        <details><summary>request / response</summary><pre>${esc(JSON.stringify(m.request, null, 2))}</pre><pre>${esc(JSON.stringify(m.raw, null, 2))}</pre></details>
+      </div>`);
+      thinking.textContent = `Deciding step ${n + 1}…`;
+      head.textContent = `${n} steps · $${cost.toFixed(6)}`;
+    }
+  }
+}
+
+$('go').onclick = async () => {
+  const message = $('t').value.trim(); if (!message) return;
+  ctrl?.abort(); ctrl = new AbortController();
+  const two = claudeReady && $('cmp').checked;
+  $('err').textContent = ''; $('go').disabled = true;
+  $('lanes').className = 'lanes' + (two ? ' two' : '');
+  $('lanes').innerHTML = `<div class="lane j" id="lj"><h3>Jev <small></small></h3><div class="steps"></div></div>` +
+    (two ? `<div class="lane cl" id="lc"><h3>${esc(RV.name)} <small></small></h3><div class="steps"></div></div>` : '');
+  const run = (id, engine) => runLane($(id), message, engine, ctrl.signal).catch(e => {
+    if (e.name !== 'AbortError') $(id).querySelector('.steps').insertAdjacentHTML('beforeend', `<div class="err">${esc(e.message)}</div>`);
+  });
+  await Promise.all([run('lj', 'jev'), two ? run('lc', 'claude') : null]);
+  $('go').disabled = false;
+};
+</script>
+</body>
+</html>

@@ -8,6 +8,9 @@ A small Express app (`server.js`) with demo pages in `public/` showing TypeSafe'
 
 | Page | What Jev decides |
 |---|---|
+| `/tools` | Which tool an agent should call (user-editable tool list) → call / confirm / ask / answer / refuse |
+| `/guard` | Whether a proposed tool call runs → allow / ask / block |
+| `/agent` | Next step of a support-agent loop (7 mock tools), up to 6 steps |
 | `/send` | Help-desk complaint triage: 8 questions → routing lane |
 | `/paste` | Which copied résumé snippet fits a form field |
 | `/flappy` | Flap or wait, every ~0.14 s |
@@ -20,7 +23,7 @@ Since 2026-09-29 the rival is **Claude Haiku 4.5**: `GEMINI_API_KEY` is commente
 
 ## Comparison lane (Jev vs another model)
 
-- `/send`, `/paste` and `/mail` can race Jev against a rival model on the same questions. The rival is **Gemini 3.5 Flash-Lite** (`lib/gemini.js`) when `GEMINI_API_KEY` is set, otherwise **Claude Haiku 4.5** (`lib/claude.js`). The choice is made by `RIVAL` in `server.js`.
+- `/send`, `/paste`, `/mail`, `/tools`, `/guard` and `/agent` can race Jev against a rival model on the same questions. The rival is **Gemini 3.5 Flash-Lite** (`lib/gemini.js`) when `GEMINI_API_KEY` is set, otherwise **Claude Haiku 4.5** (`lib/claude.js`). The choice is made by `RIVAL` in `server.js`.
 - Pages read the rival's name, model, endpoint and key variable from `/api/health` (`h.rival`, `h.rivalConfigured`) and fill labels via `data-rv` / `data-rv-t` attributes. Don't hardcode a model name in the pages.
 - The wire flag is still `engine: 'claude'` and the page variables are still `res.claude`, `claudeReady` and so on. Here "claude" just means "the rival lane"; it was kept for backwards compatibility.
 - The rival answers with hard values only (no probabilities). Its answers are mapped into Jev's `{choice | noul | score}` shape so the routes stay unchanged.
@@ -43,6 +46,13 @@ Since 2026-09-29 the rival is **Claude Haiku 4.5**: `GEMINI_API_KEY` is commente
 - At 15 RPM a 100-email `/mail` race takes about 6–7 minutes for Gemini (about 14 s for Jev). `lib/gemini.js` retries 429s using Google's `retryDelay` (capped at 20 s, up to 4 retries).
 - Enabling billing costs about $0.0002 per email ($0.30 in / $2.50 out per Mtok; no thinking tokens observed).
 - The key was pasted into a chat once. Swap in a fresh key from AI Studio.
+
+## Agent demos (`/tools`, `/guard`, `/agent`), added 2026-10-06
+
+- Jev only picks; it never writes text. Tool arguments are not generated: `/tools` shows the tool name only, `/agent` parses the order ID from the message with a regex, and its final reply is a template filled from what the mock tools returned (`agentReply` in `server.js`).
+- `/agent` mock data is `AGENT_ORDERS` in `server.js`. A1077's rider note is a planted prompt injection; the `suspicious` question blocks `issue_refund` when it fires. `issue_refund` itself also rejects calls made before `lookup_order` and `check_refund_policy`, or outside the policy.
+- `/tools` drops to "ask" when Jev's top tool is under 50% likely; the rival has no probabilities, so it never triggers that rule.
+- Built and checked against a stubbed Jev endpoint only (`.env` had no keys on 2026-10-06). The prompt wording has not been tuned against the real model yet, unlike `/dino`.
 
 ## `/dino` design notes
 
