@@ -1,5 +1,6 @@
 node_modules/
 .env
+*.env
 .gmail-token.json
 *.log
 .DS_Store

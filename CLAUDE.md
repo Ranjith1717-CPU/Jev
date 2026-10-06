@@ -52,7 +52,8 @@ Since 2026-09-29 the rival is **Claude Haiku 4.5**: `GEMINI_API_KEY` is commente
 - Jev only picks; it never writes text. Tool arguments are not generated: `/tools` shows the tool name only, `/agent` parses the order ID from the message with a regex, and its final reply is a template filled from what the mock tools returned (`agentReply` in `server.js`).
 - `/agent` mock data is `AGENT_ORDERS` in `server.js`. A1077's rider note is a planted prompt injection; the `suspicious` question blocks `issue_refund` when it fires. `issue_refund` itself also rejects calls made before `lookup_order` and `check_refund_policy`, or outside the policy.
 - `/tools` drops to "ask" when Jev's top tool is under 50% likely; the rival has no probabilities, so it never triggers that rule.
-- Built and checked against a stubbed Jev endpoint only (`.env` had no keys on 2026-10-06). The prompt wording has not been tuned against the real model yet, unlike `/dino`.
+- Live run on 2026-10-06 (every sample prompt, Jev vs Claude Haiku 4.5): Jev 0.35–0.6 s per call vs Haiku 1–2.5 s. `/agent` runs cost $0.00003–0.00012 for Jev vs $0.0007–0.003 for Haiku (20–27×). Every scenario took a sensible path. On "Planted note" both ignored the fake refund; Jev raises `suspicious` to 0.98 on the step after the note appears, and the page shows that.
+- The wording matters, as with `/dino`. On `/tools`, the first `clarify` wording made Jev ask a follow-up for clear requests ("tomorrow same time", "last month"); naming "answer no when the request already names what is needed" fixed it. On `/guard`, `injected` first fired (0.59) on a legitimate refund because the agent had read a policy; it now asks for instructions aimed at the AI and says that using facts or policy doesn't count.
 
 ## `/dino` design notes
 

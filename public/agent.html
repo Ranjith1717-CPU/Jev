@@ -144,7 +144,7 @@ async function runLane(el, message, engine, signal) {
       thinking.insertAdjacentHTML('beforebegin', `<div class="step${fin ? ' final' + (m.action === 'escalate_to_human' ? ' esc' : '') : ''}">
         <div class="h"><b>${m.step}. ${esc(m.picked)}${m.p != null ? ' <span>' + Math.round(m.p * 100) + '%</span>' : ''}</b><span>${(m.ms / 1000).toFixed(2)} s · $${m.cost.toFixed(6)}</span></div>
         ${alts ? `<div class="alts">${alts}</div>` : ''}
-        ${m.guard ? `<div class="g">${esc(m.guard)}</div>` : ''}
+        ${m.guard ? `<div class="g">${esc(m.guard)}</div>` : m.suspicious >= .5 ? `<div class="g" style="color:var(--amber)">Spotted planted instructions in a tool result${m.p != null ? ' (' + Math.round(m.suspicious * 100) + '% sure)' : ''}; not followed.</div>` : ''}
         ${m.result ? `<div class="r">→ ${esc(m.result)}</div>` : ''}
         <details><summary>request / response</summary><pre>${esc(JSON.stringify(m.request, null, 2))}</pre><pre>${esc(JSON.stringify(m.raw, null, 2))}</pre></details>
       </div>`);
